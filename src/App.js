@@ -169,17 +169,6 @@ function App() {
                 break;
               }
 
-              // Try to refresh token if needed
-              try {
-                await apiService.refreshToken();
-              } catch (refreshError) {
-                console.log('Token refresh failed, user needs to login again');
-                notify('Session expired. Please log in again.', {
-                  type: 'error',
-                });
-                break;
-              }
-
               const result = await apiService.updatePrayerTimes(payload.times);
               if (result.success) {
                 // Update local prayer times state
