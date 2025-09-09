@@ -1,25 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNotify } from '../context/NotificationContext';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
-  FaEye,
-  FaEyeSlash,
   FaUser,
   FaLock,
+  FaEye,
+  FaEyeSlash,
   FaMobile,
   FaEnvelope,
 } from 'react-icons/fa';
-import ForgotPassword from './ForgotPassword';
+import { useNotify } from '../context/NotificationContext';
 import {
   validateLoginCredentials,
   validateRegistrationData,
-  displayValidationErrors,
-  authRateLimiter,
 } from '../utils/validation';
 import {
   logError,
   measurePerformance,
   ERROR_SEVERITY,
 } from '../utils/errorHandler';
+import ForgotPassword from './ForgotPassword';
+import ResetPassword from './ResetPassword';
 
 // Demo user credentials for testing (removed for security)
 
@@ -28,12 +27,14 @@ import {
 //   username: 'admin',
 //   password: 'admin123',
 //   mobile: '9876543210',
-//   email: 'admin@masjid.com'
+//   email: 'bakrabu786@gmail.com'
 // };
 
 const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetToken, setResetToken] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -82,6 +83,21 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
     setErrors({});
   }, [isLogin]);
 
+  // Check for reset token in URL on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token =
+      urlParams.get('token') ||
+      window.location.pathname.split('/reset-password/')[1];
+
+    if (token) {
+      setResetToken(token);
+      setShowResetPassword(true);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Handle input changes with validation
   const handleInputChange = useCallback(
     (field, value) => {
@@ -124,111 +140,69 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
     return Object.keys(newErrors).length === 0;
   }, [isLogin, formData]);
 
-  // Handle form submission with security measures
-  const handleSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-
-      if (isSubmitting) return; // Prevent double submission
-
-      // Clear any existing error messages
-      setErrors({});
-
-      // Rate limiting check
-      const userIdentifier = formData.username || 'anonymous';
-      if (!authRateLimiter.isAllowed(userIdentifier)) {
-        notify(
-          'Too many attempts. Please wait 15 minutes before trying again.',
-          { type: 'error' },
-        );
-        return;
-      }
-
-      // Validate form
-      if (!validateForm()) {
-        displayValidationErrors(Object.values(errors).filter(Boolean));
-        return;
-      }
-
-      setIsSubmitting(true);
-
-      try {
-        await measurePerformance(
-          isLogin ? 'User Login' : 'User Registration',
-          async () => {
-            if (isLogin) {
-              const success = await handleLogin();
-              if (success) {
-                // Clear form on successful login
-                setFormData({
-                  username: '',
-                  password: '',
-                  confirmPassword: '',
-                  mobile: '',
-                  email: '',
-                });
-              }
-            } else {
-              await handleRegister();
-            }
-          },
-          { context: isLogin ? 'Login' : 'Registration' },
-        );
-      } catch (error) {
-        logError(error, 'Authentication', ERROR_SEVERITY.HIGH);
-        notify('Authentication failed. Please try again.', { type: 'error' });
-      } finally {
-        setIsSubmitting(false);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [isLogin, isSubmitting, formData, errors, validateForm, notify],
-  );
-
-  // Handle login with enhanced security
   const handleLogin = useCallback(async () => {
-    const sanitizedData = {
-      username: formData.username.trim(),
-      password: formData.password,
-    };
+    if (!validateForm()) {
+      return;
+    }
 
-    // Real backend login for all users including admin and demo
+    setIsSubmitting(true);
     try {
-      await onLogin(sanitizedData);
-      authRateLimiter.reset(sanitizedData.username);
-      // Success notification is handled by the parent component (App.js)
-      return true;
+      // Extract only login credentials from formData
+      const loginCredentials = {
+        username: formData.username,
+        password: formData.password,
+      };
+
+      await onLogin(loginCredentials);
     } catch (error) {
       console.error('Login error:', error);
-      // Only show error notification if login actually failed
-      if (error.message && error.message !== 'Login failed') {
-        notify(error.message, { type: 'error' });
-      } else {
-        notify('Invalid credentials. Please try again.', { type: 'error' });
-      }
-      return false;
+      notify('Login failed. Please try again.', { type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [formData, onLogin, notify]);
+  }, [formData, validateForm, notify, onLogin, isLogin]);
 
-  // Handle registration with enhanced security
   const handleRegister = useCallback(async () => {
-    const sanitizedData = {
-      username: formData.username.trim(),
-      password: formData.password,
-      mobile: formData.mobile.trim(),
-      email: formData.email.trim(),
-    };
-
+    if (!validateForm()) return;
+    setIsSubmitting(true);
     try {
-      await onRegister(sanitizedData);
-      authRateLimiter.reset(sanitizedData.username);
-      // Success notification is handled by the parent component (App.js)
+      // Extract only registration data from formData
+      const registrationData = {
+        username: formData.username,
+        password: formData.password,
+        email: formData.email,
+        mobile: formData.mobile,
+        name: formData.username, // Use username as name if not provided
+      };
+
+      await onRegister(registrationData);
+      setIsLogin(true);
+      setFormData({
+        username: '',
+        password: '',
+        confirmPassword: '',
+        email: '',
+        mobile: '',
+      });
     } catch (error) {
       console.error('Registration error:', error);
       notify('Registration failed. Please try again.', { type: 'error' });
-      throw error;
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [formData, onRegister, notify]);
+  }, [formData, validateForm, notify, onRegister]);
+
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (isLogin) {
+        handleLogin();
+      } else {
+        handleRegister();
+      }
+    },
+    [isLogin, handleLogin, handleRegister],
+  );
 
   // Handle guest mode
   const handleGuestMode = useCallback(async () => {
@@ -236,7 +210,7 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
       await measurePerformance('Guest Mode Access', async () => {
         await onGuestMode();
       });
-      notify('Entering guest mode', { type: 'info' });
+      // Notification is handled in App.js - no need for duplicate
     } catch (error) {
       logError(error, 'Guest Mode', ERROR_SEVERITY.MEDIUM);
       notify('Failed to enter guest mode', { type: 'error' });
@@ -253,6 +227,25 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
     },
     [errors, formData],
   );
+
+  // Show reset password component if needed
+  if (showResetPassword) {
+    return (
+      <ResetPassword
+        token={resetToken}
+        onBack={() => {
+          setShowResetPassword(false);
+          setResetToken(null);
+          setIsLogin(true);
+        }}
+        onSuccess={() => {
+          setShowResetPassword(false);
+          setResetToken(null);
+          setIsLogin(true);
+        }}
+      />
+    );
+  }
 
   // Show forgot password component if needed
   if (showForgotPassword) {
@@ -282,7 +275,7 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
         {/* Username Field */}
         <div className='input-group'>
           <label htmlFor='username'>
-            <FaUser /> Username
+            <FaUser /> Username <span className='required-asterisk'>*</span>
           </label>
           <input
             type='text'
@@ -303,7 +296,7 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
         {/* Password Field */}
         <div className='input-group'>
           <label htmlFor='password'>
-            <FaLock /> Password
+            <FaLock /> Password <span className='required-asterisk'>*</span>
           </label>
           <div className='password-input-container'>
             <input
@@ -331,82 +324,86 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
           )}
         </div>
 
-        {/* Confirm Password Field (Registration only) */}
+        {/* Registration Fields - Compact Layout */}
         {!isLogin && (
-          <div className='input-group'>
-            <label htmlFor='confirmPassword'>
-              <FaLock /> Confirm Password
-            </label>
-            <div className='password-input-container'>
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                id='confirmPassword'
-                className={getInputClassName('confirmPassword')}
-                value={formData.confirmPassword}
-                onChange={(e) =>
-                  handleInputChange('confirmPassword', e.target.value)
-                }
-                placeholder='Confirm your password'
-                disabled={isSubmitting || loading}
-                autoComplete='new-password'
-                required
-              />
-              <button
-                type='button'
-                className='password-toggle'
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                disabled={isSubmitting || loading}
-              >
-                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
+          <div className='registration-fields'>
+            {/* Confirm Password Field */}
+            <div className='input-group'>
+              <label htmlFor='confirmPassword'>
+                <FaLock /> Confirm Password{' '}
+                <span className='required-asterisk'>*</span>
+              </label>
+              <div className='password-input-container'>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id='confirmPassword'
+                  className={getInputClassName('confirmPassword')}
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    handleInputChange('confirmPassword', e.target.value)
+                  }
+                  placeholder='Confirm your password'
+                  disabled={isSubmitting || loading}
+                  autoComplete='new-password'
+                  required
+                />
+                <button
+                  type='button'
+                  className='password-toggle'
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isSubmitting || loading}
+                >
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <div className='error-message'>{errors.confirmPassword}</div>
+              )}
             </div>
-            {errors.confirmPassword && (
-              <div className='error-message'>{errors.confirmPassword}</div>
-            )}
-          </div>
-        )}
 
-        {/* Mobile Field (Registration only) */}
-        {!isLogin && (
-          <div className='input-group'>
-            <label htmlFor='mobile'>
-              <FaMobile /> Mobile Number
-            </label>
-            <input
-              type='tel'
-              id='mobile'
-              className={getInputClassName('mobile')}
-              value={formData.mobile}
-              onChange={(e) => handleInputChange('mobile', e.target.value)}
-              placeholder='Enter your mobile number'
-              disabled={isSubmitting || loading}
-              autoComplete='tel'
-            />
-            {errors.mobile && (
-              <div className='error-message'>{errors.mobile}</div>
-            )}
-          </div>
-        )}
+            {/* Mobile and Email in Row */}
+            <div className='input-row'>
+              <div className='input-group'>
+                <label htmlFor='mobile'>
+                  <FaMobile /> Mobile{' '}
+                  <span className='optional-text'>(optional)</span>
+                </label>
+                <input
+                  type='tel'
+                  id='mobile'
+                  className={getInputClassName('mobile')}
+                  value={formData.mobile}
+                  onChange={(e) => handleInputChange('mobile', e.target.value)}
+                  placeholder='Mobile number'
+                  disabled={isSubmitting || loading}
+                  autoComplete='tel'
+                />
+                {errors.mobile && (
+                  <div className='error-message'>{errors.mobile}</div>
+                )}
+              </div>
 
-        {/* Email Field (Registration only) */}
-        {!isLogin && (
-          <div className='input-group'>
-            <label htmlFor='email'>
-              <FaEnvelope /> Email Address
-            </label>
-            <input
-              type='email'
-              id='email'
-              className={getInputClassName('email')}
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder='Enter your email address'
-              disabled={isSubmitting || loading}
-              autoComplete='email'
-            />
-            {errors.email && (
-              <div className='error-message'>{errors.email}</div>
-            )}
+              <div className='input-group'>
+                <label htmlFor='email'>
+                  <FaEnvelope /> Email{' '}
+                  <span className='required-asterisk'>*</span>
+                </label>
+                <input
+                  type='email'
+                  id='email'
+                  className={getInputClassName('email')}
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder='Email address'
+                  disabled={isSubmitting || loading}
+                  autoComplete='email'
+                  required
+                />
+                {errors.email && (
+                  <div className='error-message'>{errors.email}</div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -462,6 +459,574 @@ const UserAuth = ({ onLogin, onRegister, onGuestMode, loading = false }) => {
           👤 Continue as Guest
         </button>
       </div>
+
+      <style>{`
+        .auth-container {
+          max-width: 450px;
+          width: 90%;
+          margin: 0 auto;
+          padding: 12px;
+          background: linear-gradient(
+            135deg,
+            #047857 0%,
+            #059669 20%,
+            #10b981 40%,
+            #34d399 60%,
+            #6ee7b7 80%,
+            #a7f3d0 100%
+          );
+          border-radius: 20px;
+          box-shadow:
+            0 20px 40px rgba(5, 150, 105, 0.5),
+            0 8px 20px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          color: #ffffff;
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(25px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .auth-container::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            45deg,
+            rgba(255, 255, 255, 0.2) 0%,
+            transparent 40%,
+            rgba(255, 255, 255, 0.1) 60%,
+            transparent 80%,
+            rgba(255, 255, 255, 0.15) 100%
+          );
+          pointer-events: none;
+        }
+
+        .auth-container::after {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: radial-gradient(
+            circle,
+            rgba(255, 255, 255, 0.1) 0%,
+            transparent 70%
+          );
+          animation: shimmer 3s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        @keyframes shimmer {
+          0%,
+          100% {
+            transform: rotate(0deg);
+          }
+          50% {
+            transform: rotate(180deg);
+          }
+        }
+
+        .auth-header {
+          text-align: center;
+          margin-bottom: 8px;
+        }
+
+        .auth-header h2 {
+          margin: 0 0 4px 0;
+          font-size: 26px;
+          font-weight: 800;
+          background: linear-gradient(
+            135deg,
+            #fbbf24 0%,
+            #f59e0b 25%,
+            #d97706 50%,
+            #b45309 75%,
+            #92400e 100%
+          );
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          text-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+          position: relative;
+          z-index: 1;
+          letter-spacing: 1px;
+          text-align: center;
+        }
+
+        .auth-subtitle {
+          margin: 0;
+          color: #000000;
+          font-size: 12px;
+          font-weight: 600;
+          opacity: 1;
+          text-shadow: none;
+        }
+
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .input-group label {
+          font-size: 11px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          color: #f3f4f6;
+        }
+
+        .required-asterisk {
+          color: #ef4444;
+          font-weight: bold;
+          font-size: 12px;
+        }
+
+        .optional-text {
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 9px;
+          font-weight: 400;
+          font-style: italic;
+        }
+
+        .auth-input {
+          padding: 6px 10px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.15);
+          color: #ffffff;
+          font-size: 12px;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(15px);
+          position: relative;
+          z-index: 1;
+          box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .password-input-container .auth-input {
+          padding-right: 30px; /* Make space for eye icon */
+        }
+
+        .auth-input::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .auth-input:focus {
+          outline: none;
+          border-color: #ffffff;
+          background: rgba(255, 255, 255, 0.2);
+          box-shadow:
+            0 0 0 3px rgba(255, 255, 255, 0.4),
+            0 2px 8px rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .auth-input.error {
+          border-color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+        }
+
+        .auth-input.valid {
+          border-color: #10b981;
+          background: rgba(16, 185, 129, 0.1);
+        }
+
+        .password-input-container {
+          position: relative;
+        }
+
+        .password-toggle {
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: rgba(128, 128, 128, 0.1);
+          border: 1px solid rgba(128, 128, 128, 0.3);
+          color: #808080;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.3s ease;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2;
+          opacity: 1;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(5px);
+        }
+
+        .password-toggle:hover {
+          color: #fbbf24;
+          background: rgba(251, 191, 36, 0.2);
+          opacity: 1;
+          transform: translateY(-50%) scale(1.1);
+        }
+
+        .password-toggle:active {
+          transform: translateY(-50%) scale(0.95);
+        }
+
+        .error-message {
+          color: #ef4444;
+          font-size: 9px;
+          margin-top: 1px;
+          font-weight: 500;
+        }
+
+        .registration-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .input-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
+        }
+
+        .auth-submit-btn {
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+          color: #059669;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          padding: 6px 12px;
+          border-radius: 10px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          margin-top: 4px;
+          box-shadow: 0 4px 12px rgba(255, 255, 255, 0.4);
+          position: relative;
+          z-index: 1;
+          letter-spacing: 0.5px;
+        }
+
+        .auth-submit-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow:
+            0 6px 15px rgba(255, 255, 255, 0.5),
+            0 2px 8px rgba(5, 150, 105, 0.3);
+          background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+        }
+
+        .auth-submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .auth-links {
+          text-align: center;
+          margin-top: 10px;
+        }
+
+        .forgot-password-link {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.8);
+          text-decoration: underline;
+          cursor: pointer;
+          font-size: 14px;
+          transition: color 0.2s ease;
+        }
+
+        .forgot-password-link:hover {
+          color: white;
+        }
+
+        .auth-mode-toggle {
+          margin-top: 12px;
+          text-align: center;
+        }
+
+        .mode-toggle-btn {
+          background: rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: white;
+          padding: 10px 16px;
+          border-radius: 10px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.3s ease;
+          position: relative;
+          z-index: 1;
+          backdrop-filter: blur(15px);
+          box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+        }
+
+        .mode-toggle-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.3);
+          transform: translateY(-1px);
+          box-shadow:
+            0 2px 8px rgba(255, 255, 255, 0.3),
+            0 1px 4px rgba(5, 150, 105, 0.2);
+        }
+
+        .auth-guest-section {
+          margin-top: 10px;
+          text-align: center;
+        }
+
+        .guest-mode-btn {
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 13px;
+          transition: all 0.3s ease;
+          position: relative;
+          z-index: 1;
+          backdrop-filter: blur(15px);
+          box-shadow: 0 1px 4px rgba(255, 255, 255, 0.15);
+        }
+
+        .guest-mode-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.25);
+          transform: translateY(-1px);
+          box-shadow:
+            0 2px 6px rgba(255, 255, 255, 0.25),
+            0 1px 3px rgba(5, 150, 105, 0.15);
+        }
+
+        @media (max-width: 768px) {
+          .auth-container {
+            max-width: 400px;
+            width: 90%;
+            margin: 8px auto;
+            padding: 10px;
+            border-radius: 16px;
+          }
+
+          .auth-header h2 {
+            font-size: 22px;
+          }
+
+          .auth-subtitle {
+            font-size: 11px;
+            color: #000000;
+            opacity: 1;
+            text-shadow: none;
+            font-weight: 600;
+          }
+
+          .input-group label {
+            font-size: 10px;
+          }
+
+          .auth-input {
+            padding: 5px 8px;
+            font-size: 11px;
+          }
+
+          .password-input-container .auth-input {
+            padding-right: 25px; /* Make space for eye icon on mobile */
+          }
+
+          .password-toggle {
+            right: 6px;
+            font-size: 10px;
+            padding: 3px;
+            color: #808080;
+            opacity: 1;
+            background: rgba(128, 128, 128, 0.1);
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          }
+
+          .password-toggle:hover {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.2);
+            opacity: 1;
+            transform: translateY(-50%) scale(1.1);
+          }
+        }
+
+        @media (max-width: 480px) {
+          .auth-container {
+            max-width: 320px;
+            width: 85%;
+            margin: 10px auto;
+            padding: 6px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(5, 150, 105, 0.6);
+            background: linear-gradient(
+              135deg,
+              #059669 0%,
+              #10b981 30%,
+              #34d399 60%,
+              #6ee7b7 85%,
+              #a7f3d0 100%
+            );
+          }
+
+          .auth-header {
+            margin-bottom: 4px;
+          }
+
+          .auth-header h2 {
+            font-size: 19px;
+            margin-bottom: 1px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+          }
+
+          .auth-subtitle {
+            font-size: 9px;
+            color: #000000;
+            opacity: 1;
+            margin-bottom: 2px;
+            text-shadow: none;
+            font-weight: 600;
+          }
+
+          .auth-form {
+            gap: 2px;
+          }
+
+          .input-group {
+            gap: 0px;
+          }
+
+          .input-group label {
+            font-size: 8px;
+            gap: 0px;
+            font-weight: 500;
+            margin-bottom: 1px;
+          }
+
+          .required-asterisk {
+            font-size: 10px;
+          }
+
+          .optional-text {
+            font-size: 7px;
+          }
+
+          .auth-input {
+            padding: 3px 5px;
+            font-size: 9px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+          }
+
+          .password-input-container .auth-input {
+            padding-right: 20px; /* Make space for eye icon on smallest screens */
+          }
+
+          .password-toggle {
+            right: 4px;
+            font-size: 8px;
+            padding: 2px;
+            color: #808080;
+            opacity: 1;
+            background: rgba(128, 128, 128, 0.1);
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          }
+
+          .password-toggle:hover {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.2);
+            opacity: 1;
+            transform: translateY(-50%) scale(1.1);
+          }
+
+          .auth-input:focus {
+            border-color: #ffffff;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+          }
+
+          .auth-submit-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 5px;
+            margin-top: 2px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            color: #059669;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+          }
+
+          .auth-submit-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.6);
+          }
+
+          .mode-toggle-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+          }
+
+          .guest-mode-btn {
+            padding: 3px 8px;
+            font-size: 9px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+          }
+
+          .input-row {
+            grid-template-columns: 1fr;
+            gap: 2px;
+          }
+
+          .password-toggle {
+            right: 3px;
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.8);
+          }
+
+          .error-message {
+            font-size: 6px;
+            margin-top: 0px;
+            color: #fecaca;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          }
+
+          .auth-container::before {
+            background: linear-gradient(
+              45deg,
+              rgba(255, 255, 255, 0.2) 0%,
+              transparent 50%,
+              rgba(255, 255, 255, 0.1) 100%
+            );
+          }
+
+          .auth-container::after {
+            background: radial-gradient(
+              circle,
+              rgba(255, 255, 255, 0.15) 0%,
+              transparent 60%
+            );
+            animation: shimmer 4s ease-in-out infinite;
+          }
+        }
+      `}</style>
     </div>
   );
 };

@@ -13,9 +13,13 @@ const HouseTable = ({
   onDeleteMember,
   L,
   isAdmin = false,
+  isGuest = false,
   loading = false,
 }) => {
   const toggleExpand = (houseId) => {
+    // Guest mode cannot expand houses
+    if (isGuest) return;
+
     if (expandedHouse === 'all') {
       // if currently expanding all, clicking any toggle will collapse all, then expand this one
       setExpandedHouse(houseId);
@@ -82,23 +86,7 @@ const HouseTable = ({
     return chips;
   };
 
-  const getDawatStatusClass = (dawat) => {
-    if (!dawat || dawat === 'Nil') return 'dawat-status nil';
-    if (dawat.includes('3-day') || dawat.includes('3 days'))
-      return 'dawat-status three-day';
-    if (dawat.includes('10-day') || dawat.includes('10 days'))
-      return 'dawat-status three-day';
-    if (dawat.includes('40-day') || dawat.includes('40 days'))
-      return 'dawat-status forty-day';
-    if (dawat.includes('4-month') || dawat.includes('4 months'))
-      return 'dawat-status four-month';
-    return 'dawat-status';
-  };
-
-  const formatDawatCell = (dawat) => {
-    if (!dawat || dawat === 'Nil') return 'Nil';
-    return dawat;
-  };
+  // Removed unused functions to fix warnings
 
   if (loading) {
     return (
@@ -150,34 +138,36 @@ const HouseTable = ({
             Members Available
           </span>
         </div>
-        <div
-          className='house-toolbar-actions small'
-          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-        >
-          <span>
-            Tip: click the <span className='tag'>▾</span> to expand a house and
-            manage members
-          </span>
-          <button
-            className='ghost'
-            type='button'
-            onClick={() => setExpandedHouse('all')}
-            aria-label='Expand all houses'
-            title='Expand all houses'
-            style={{ marginLeft: 8 }}
+        {!isGuest && (
+          <div
+            className='house-toolbar-actions small'
+            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           >
-            Expand All
-          </button>
-          <button
-            className='ghost'
-            type='button'
-            onClick={() => setExpandedHouse(null)}
-            aria-label='Collapse all houses'
-            title='Collapse all houses'
-          >
-            Collapse All
-          </button>
-        </div>
+            <span>
+              Tip: click the <span className='tag'>▾</span> to expand a house
+              and manage members
+            </span>
+            <button
+              className='ghost'
+              type='button'
+              onClick={() => setExpandedHouse('all')}
+              aria-label='Expand all houses'
+              title='Expand all houses'
+              style={{ marginLeft: 8 }}
+            >
+              Expand All
+            </button>
+            <button
+              className='ghost'
+              type='button'
+              onClick={() => setExpandedHouse(null)}
+              aria-label='Collapse all houses'
+              title='Collapse all houses'
+            >
+              Collapse All
+            </button>
+          </div>
+        )}
       </div>
 
       <div className='table-responsive'>
@@ -199,22 +189,34 @@ const HouseTable = ({
                     ? house.members
                     : [];
                   const adults = members.filter((m) => m.age >= 14).length;
-                  const childCount = members.filter((m) => m.isChild).length;
+                  const childCount = members.filter((m) => m.age < 14).length;
                   const head = members.find((m) => m.role === 'Head') || {};
 
                   return (
                     <React.Fragment key={house._id || house.id}>
                       <tr className='house-row'>
                         <td data-label='House'>
+                          {!isGuest && (
+                            <span
+                              className='expand-icon'
+                              onClick={() =>
+                                toggleExpand(house._id || house.id)
+                              }
+                            >
+                              {expandedHouse === (house._id || house.id)
+                                ? '▴'
+                                : '▾'}
+                            </span>
+                          )}
                           <span
-                            className='expand-icon'
-                            onClick={() => toggleExpand(house._id || house.id)}
+                            style={{
+                              fontWeight: 'bold',
+                              fontSize: '14px',
+                              color: '#1e40af',
+                            }}
                           >
-                            {expandedHouse === (house._id || house.id)
-                              ? '▴'
-                              : '▾'}
+                            House {house.number}
                           </span>
-                          <strong>House {house.number}</strong>
                         </td>
                         <td data-label='Head'>{head.name || '-'}</td>
                         <td data-label="Father's Name">
@@ -226,7 +228,8 @@ const HouseTable = ({
                               {adults} Adults
                             </span>
                             <span className='child-count'>
-                              {childCount} child
+                              {childCount}{' '}
+                              {childCount === 1 ? 'child' : 'children'}
                             </span>
                           </div>
                         </td>
@@ -248,279 +251,275 @@ const HouseTable = ({
                         <td data-label='Street'>{house.street}</td>
                       </tr>
 
-                      {(expandedHouse === 'all' ||
-                        expandedHouse === (house._id || house.id)) && (
-                        <tr className='member-row'>
-                          <td colSpan='6'>
-                            <div className='member-table'>
-                              <div
-                                style={{
-                                  padding: '8px',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                <div>
-                                  <strong>
-                                    Members of House {house.number}
-                                  </strong>
-                                  <span className='small'>
-                                    {' '}
-                                    (
-                                    {house.displayMembers?.length ||
-                                      house.matchedMembers?.length ||
-                                      house.members.length}{' '}
-                                    shown)
-                                  </span>
-                                </div>
-                                {isAdmin && (
+                      {!isGuest &&
+                        (expandedHouse === 'all' ||
+                          expandedHouse === (house._id || house.id)) && (
+                          <tr className='member-row'>
+                            <td colSpan='6'>
+                              <div className='member-table'>
+                                <div
+                                  style={{
+                                    padding: '8px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                  }}
+                                >
                                   <div>
-                                    <button
-                                      className='ghost'
-                                      onClick={() =>
-                                        onAddMember &&
-                                        onAddMember(house._id || house.id)
-                                      }
+                                    <span
+                                      style={{
+                                        fontWeight: 'bold',
+                                        fontSize: '16px',
+                                        color: '#1e40af',
+                                      }}
                                     >
-                                      ➕ Add Member
-                                    </button>
-                                    <button
-                                      className='ghost'
-                                      onClick={() =>
-                                        onEditHouse &&
-                                        onEditHouse(house._id || house.id)
-                                      }
-                                    >
-                                      ✏️ Edit House
-                                    </button>
-                                    <button
-                                      className='ghost warn'
-                                      onClick={() =>
-                                        onDeleteHouse &&
-                                        onDeleteHouse(house._id || house.id)
-                                      }
-                                      disabled={loading}
-                                      title={
-                                        loading
-                                          ? 'Deleting...'
-                                          : 'Delete this house'
-                                      }
-                                    >
-                                      {loading
-                                        ? '⏳ Deleting...'
-                                        : '🗑️ Delete House'}
-                                    </button>
+                                      Members of House {house.number}
+                                    </span>
+                                    <span className='small'>
+                                      {' '}
+                                      (
+                                      {house.displayMembers?.length ||
+                                        house.matchedMembers?.length ||
+                                        house.members.length}{' '}
+                                      shown)
+                                    </span>
                                   </div>
-                                )}
-                              </div>
+                                  {isAdmin && (
+                                    <div>
+                                      <button
+                                        className='ghost'
+                                        onClick={() =>
+                                          onAddMember &&
+                                          onAddMember(house._id || house.id)
+                                        }
+                                      >
+                                        ➕ Add Member
+                                      </button>
+                                      <button
+                                        className='ghost'
+                                        onClick={() =>
+                                          onEditHouse &&
+                                          onEditHouse(house._id || house.id)
+                                        }
+                                      >
+                                        ✏️ Edit House
+                                      </button>
+                                      <button
+                                        className='ghost warn'
+                                        onClick={() =>
+                                          onDeleteHouse &&
+                                          onDeleteHouse(house._id || house.id)
+                                        }
+                                        disabled={loading}
+                                        title={
+                                          loading
+                                            ? 'Deleting...'
+                                            : 'Delete this house'
+                                        }
+                                      >
+                                        {loading
+                                          ? '⏳ Deleting...'
+                                          : '🗑️ Delete House'}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
 
-                              <table
-                                style={{
-                                  width: '100%',
-                                  borderCollapse: 'collapse',
-                                }}
-                              >
-                                <thead>
-                                  <tr
-                                    style={{
-                                      background: '#f7fff6',
-                                      color: '#083d24',
-                                    }}
-                                  >
-                                    <th style={{ width: '120px' }}>Name</th>
-                                    <th style={{ width: '180px' }}>
-                                      Father's Name
-                                    </th>
-                                    <th style={{ width: '60px' }}>Age</th>
-                                    <th style={{ width: '90px' }}>Gender</th>
-                                    <th style={{ width: '120px' }}>
-                                      Occupation
-                                    </th>
-                                    <th style={{ width: '120px' }}>
-                                      Education
-                                    </th>
-                                    <th style={{ width: '110px' }}>Quran</th>
-                                    <th style={{ width: '110px' }}>Maktab</th>
-                                    <th style={{ width: '110px' }}>Dawat</th>
-                                    <th style={{ width: '120px' }}>Mobile</th>
-                                    <th style={{ width: '120px' }}>Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {(() => {
-                                    // Always use the same data source for consistency
-                                    const membersToUse =
-                                      house.displayMembers ||
-                                      house.matchedMembers ||
-                                      house.members ||
-                                      [];
-                                    return Array.isArray(membersToUse)
-                                      ? membersToUse.map((member, index) => (
-                                          <tr
-                                            key={
-                                              member._id ||
-                                              member.id ||
-                                              `${member.name}-${member.fatherName}-${index}`
-                                            }
-                                          >
-                                            <td data-label='Name'>
-                                              {member.name}
-                                            </td>
-                                            <td data-label="Father's Name">
-                                              {member.fatherName || '-'}
-                                            </td>
-                                            <td data-label='Age'>
-                                              {member.age}
-                                            </td>
-                                            <td data-label='Gender'>
-                                              {member.gender}
-                                            </td>
-                                            <td data-label='Occupation'>
-                                              {member.occupation}
-                                            </td>
-                                            <td data-label='Education'>
-                                              {member.education}
-                                            </td>
-                                            <td data-label='Quran'>
-                                              {member.quran || 'no'}
-                                            </td>
-                                            <td data-label='Maktab'>
-                                              {Number(member.age) < 14
-                                                ? member.maktab === 'yes'
-                                                  ? 'Yes'
-                                                  : 'No'
-                                                : '-'}
-                                            </td>
-                                            <td data-label='Dawat'>
-                                              <span
-                                                className={getDawatStatusClass(
-                                                  member.dawat,
+                                <table
+                                  style={{
+                                    width: '100%',
+                                    borderCollapse: 'collapse',
+                                  }}
+                                >
+                                  <thead>
+                                    <tr
+                                      style={{
+                                        background: '#f7fff6',
+                                        color: '#083d24',
+                                      }}
+                                    >
+                                      <th style={{ width: '120px' }}>Name</th>
+                                      <th style={{ width: '180px' }}>
+                                        Father's Name
+                                      </th>
+                                      <th style={{ width: '60px' }}>Age</th>
+                                      <th style={{ width: '90px' }}>Gender</th>
+                                      <th style={{ width: '120px' }}>
+                                        Occupation
+                                      </th>
+                                      <th style={{ width: '120px' }}>
+                                        Education
+                                      </th>
+                                      <th style={{ width: '110px' }}>Quran</th>
+                                      <th style={{ width: '110px' }}>Maktab</th>
+                                      <th style={{ width: '110px' }}>Dawat</th>
+                                      <th style={{ width: '120px' }}>Mobile</th>
+                                      <th style={{ width: '120px' }}>
+                                        Actions
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(() => {
+                                      // Always use the same data source for consistency
+                                      const membersToUse =
+                                        house.displayMembers ||
+                                        house.matchedMembers ||
+                                        house.members ||
+                                        [];
+                                      return Array.isArray(membersToUse)
+                                        ? membersToUse.map((member, index) => (
+                                            <tr
+                                              key={
+                                                member._id ||
+                                                member.id ||
+                                                `${member.name}-${member.fatherName}-${index}`
+                                              }
+                                            >
+                                              <td data-label='Name'>
+                                                {member.name}
+                                              </td>
+                                              <td data-label="Father's Name">
+                                                {member.fatherName || '-'}
+                                              </td>
+                                              <td data-label='Age'>
+                                                {member.age}
+                                              </td>
+                                              <td data-label='Gender'>
+                                                {member.gender}
+                                              </td>
+                                              <td data-label='Occupation'>
+                                                {member.occupation}
+                                              </td>
+                                              <td data-label='Education'>
+                                                {member.education}
+                                              </td>
+                                              <td data-label='Quran'>
+                                                {member.quran || 'no'}
+                                              </td>
+                                              <td data-label='Maktab'>
+                                                {Number(member.age) < 14
+                                                  ? member.maktab === 'yes'
+                                                    ? 'Yes'
+                                                    : 'No'
+                                                  : '-'}
+                                              </td>
+                                              <td data-label='Dawat'>
+                                                {(() => {
+                                                  const dawatCounts =
+                                                    member.dawatCounts || {};
+                                                  const memberDawats = [];
+
+                                                  // Collect all dawat types for this member
+                                                  if (
+                                                    dawatCounts['3-day'] &&
+                                                    dawatCounts['3-day'] > 0
+                                                  ) {
+                                                    memberDawats.push(
+                                                      `3day ×${dawatCounts['3-day']}`,
+                                                    );
+                                                  }
+                                                  if (
+                                                    dawatCounts['10-day'] &&
+                                                    dawatCounts['10-day'] > 0
+                                                  ) {
+                                                    memberDawats.push(
+                                                      `10day ×${dawatCounts['10-day']}`,
+                                                    );
+                                                  }
+                                                  if (
+                                                    dawatCounts['40-day'] &&
+                                                    dawatCounts['40-day'] > 0
+                                                  ) {
+                                                    memberDawats.push(
+                                                      `40day ×${dawatCounts['40-day']}`,
+                                                    );
+                                                  }
+                                                  if (
+                                                    dawatCounts['4-month'] &&
+                                                    dawatCounts['4-month'] > 0
+                                                  ) {
+                                                    memberDawats.push(
+                                                      `4month ×${dawatCounts['4-month']}`,
+                                                    );
+                                                  }
+
+                                                  if (memberDawats.length > 0) {
+                                                    return (
+                                                      <span className='dawat-status'>
+                                                        {memberDawats.join(
+                                                          ', ',
+                                                        )}
+                                                      </span>
+                                                    );
+                                                  } else {
+                                                    return (
+                                                      <span className='dawat-status nil'>
+                                                        {member.dawat || 'Nil'}
+                                                      </span>
+                                                    );
+                                                  }
+                                                })()}
+                                              </td>
+                                              <td data-label='Mobile'>
+                                                {isAdmin
+                                                  ? member.mobile || ''
+                                                  : 'Hidden'}
+                                              </td>
+                                              <td data-label='Actions'>
+                                                {isAdmin && (
+                                                  <div
+                                                    style={{
+                                                      display: 'flex',
+                                                      gap: '4px',
+                                                      justifyContent:
+                                                        'flex-end',
+                                                    }}
+                                                  >
+                                                    <button
+                                                      onClick={() =>
+                                                        onEditMember &&
+                                                        onEditMember(
+                                                          house._id || house.id,
+                                                          member._id ||
+                                                            member.id,
+                                                        )
+                                                      }
+                                                    >
+                                                      ✏️
+                                                    </button>
+                                                    <button
+                                                      className='warn'
+                                                      onClick={() =>
+                                                        onDeleteMember &&
+                                                        onDeleteMember(
+                                                          member._id ||
+                                                            member.id,
+                                                          house._id || house.id,
+                                                        )
+                                                      }
+                                                      disabled={loading}
+                                                      title={
+                                                        loading
+                                                          ? 'Deleting...'
+                                                          : 'Delete this member'
+                                                      }
+                                                    >
+                                                      {loading ? '⏳' : '🗑️'}
+                                                    </button>
+                                                  </div>
                                                 )}
-                                              >
-                                                {formatDawatCell(member.dawat)}
-                                              </span>
-                                              {member.dawatCounts && (
-                                                <div
-                                                  className='small'
-                                                  style={{ marginTop: 2 }}
-                                                >
-                                                  {(member.dawatCounts[
-                                                    '3-day'
-                                                  ] || 0) > 0 && (
-                                                    <span
-                                                      className='tag'
-                                                      style={{ marginRight: 4 }}
-                                                    >
-                                                      3d ×
-                                                      {
-                                                        member.dawatCounts[
-                                                          '3-day'
-                                                        ]
-                                                      }
-                                                    </span>
-                                                  )}
-                                                  {(member.dawatCounts[
-                                                    '10-day'
-                                                  ] || 0) > 0 && (
-                                                    <span
-                                                      className='tag'
-                                                      style={{ marginRight: 4 }}
-                                                    >
-                                                      10d ×
-                                                      {
-                                                        member.dawatCounts[
-                                                          '10-day'
-                                                        ]
-                                                      }
-                                                    </span>
-                                                  )}
-                                                  {(member.dawatCounts[
-                                                    '40-day'
-                                                  ] || 0) > 0 && (
-                                                    <span
-                                                      className='tag'
-                                                      style={{ marginRight: 4 }}
-                                                    >
-                                                      40d ×
-                                                      {
-                                                        member.dawatCounts[
-                                                          '40-day'
-                                                        ]
-                                                      }
-                                                    </span>
-                                                  )}
-                                                  {(member.dawatCounts[
-                                                    '4-month'
-                                                  ] || 0) > 0 && (
-                                                    <span className='tag'>
-                                                      4m ×
-                                                      {
-                                                        member.dawatCounts[
-                                                          '4-month'
-                                                        ]
-                                                      }
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              )}
-                                            </td>
-                                            <td data-label='Mobile'>
-                                              {isAdmin
-                                                ? member.mobile || ''
-                                                : 'Hidden'}
-                                            </td>
-                                            <td data-label='Actions'>
-                                              {isAdmin && (
-                                                <div
-                                                  style={{
-                                                    display: 'flex',
-                                                    gap: '4px',
-                                                    justifyContent: 'flex-end',
-                                                  }}
-                                                >
-                                                  <button
-                                                    onClick={() =>
-                                                      onEditMember &&
-                                                      onEditMember(
-                                                        house._id || house.id,
-                                                        member._id || member.id,
-                                                      )
-                                                    }
-                                                  >
-                                                    ✏️
-                                                  </button>
-                                                  <button
-                                                    className='warn'
-                                                    onClick={() =>
-                                                      onDeleteMember &&
-                                                      onDeleteMember(
-                                                        member._id || member.id,
-                                                        house._id || house.id,
-                                                      )
-                                                    }
-                                                    disabled={loading}
-                                                    title={
-                                                      loading
-                                                        ? 'Deleting...'
-                                                        : 'Delete this member'
-                                                    }
-                                                  >
-                                                    {loading ? '⏳' : '🗑️'}
-                                                  </button>
-                                                </div>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        ))
-                                      : null;
-                                  })()}
-                                </tbody>
-                              </table>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
+                                              </td>
+                                            </tr>
+                                          ))
+                                        : null;
+                                    })()}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                     </React.Fragment>
                   );
                 })

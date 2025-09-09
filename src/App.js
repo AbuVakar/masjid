@@ -8,6 +8,9 @@ import Header from './components/Header';
 import Modal from './components/Modal';
 import UserAuth from './components/UserAuth';
 import Footer from './components/Footer';
+// import NotificationTester from './components/NotificationTester';
+import BackToTop from './components/BackToTop';
+import './components/NotificationTester.css';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -50,6 +53,7 @@ function App() {
     logout: logoutUser,
     register,
     enableGuestMode,
+    updateUser,
     isAuthenticated,
     isAdmin,
     isGuest,
@@ -60,10 +64,10 @@ function App() {
   const { saveHouse, saveMember } = useHouses();
 
   const handleUserLogin = useCallback(
-    async (userData) => {
+    async (credentials) => {
       try {
-        await login(userData);
-        notify(`Welcome back, ${userData.username}!`, { type: 'success' });
+        await login(credentials);
+        notify(`Welcome back, ${credentials.username}!`, { type: 'success' });
       } catch (error) {
         logError(error, 'User Login', ERROR_SEVERITY.HIGH);
         // Don't show duplicate error message - let UserAuth handle it
@@ -89,7 +93,10 @@ function App() {
 
   const handleGuestMode = useCallback(() => {
     enableGuestMode();
-    notify('Entering guest mode with limited access.', { type: 'info' });
+    notify(
+      'Entering guest mode with limited access. You can only view houses, prayer times, and contact information.',
+      { type: 'info' },
+    );
   }, [enableGuestMode, notify]);
 
   const openModal = useCallback((type, data = null) => {
@@ -109,6 +116,18 @@ function App() {
     closeModal();
     notify('Logged out successfully.', { type: 'success' });
   }, [logoutUser, closeModal, notify]);
+
+  // Add notification tester function to window
+  useEffect(() => {
+    window.openNotificationTester = () => {
+      openModal('notification_tester', { user });
+    };
+
+    // Cleanup
+    return () => {
+      delete window.openNotificationTester;
+    };
+  }, [openModal, user]);
 
   const handleModalSave = useCallback(
     async (payload, type) => {
@@ -134,6 +153,33 @@ function App() {
           case 'timetable':
             // Handle timetable save
             try {
+              // Check if user is admin
+              if (!isAdmin) {
+                notify('Only admins can update the timetable.', {
+                  type: 'error',
+                });
+                break;
+              }
+
+              // Check if user is authenticated
+              if (!isAuthenticated) {
+                notify('Please log in to update timetable.', {
+                  type: 'error',
+                });
+                break;
+              }
+
+              // Try to refresh token if needed
+              try {
+                await apiService.refreshToken();
+              } catch (refreshError) {
+                console.log('Token refresh failed, user needs to login again');
+                notify('Session expired. Please log in again.', {
+                  type: 'error',
+                });
+                break;
+              }
+
               const result = await apiService.updatePrayerTimes(payload.times);
               if (result.success) {
                 // Update local prayer times state
@@ -144,6 +190,7 @@ function App() {
                 throw new Error('Failed to update timetable');
               }
             } catch (error) {
+              console.error('Timetable update error:', error);
               const message =
                 error.response?.data?.message ||
                 error.message ||
@@ -160,18 +207,110 @@ function App() {
             notify('Notification preferences saved!', { type: 'success' });
             closeModal();
             break;
+          case 'user_profile':
+            // Handle user profile preferences save
+            try {
+              console.log('=== APP.JS SEND DEBUG ===');
+              console.log(
+                'App.js - Sending Fajr timing:',
+                payload.prayerTiming?.Fajr,
+              );
+              console.log(
+                'App.js - Sending Dhuhr timing:',
+                payload.prayerTiming?.Dhuhr,
+              );
+              console.log(
+                'App.js - Sending Asr timing:',
+                payload.prayerTiming?.Asr,
+              );
+              console.log(
+                'App.js - Sending Maghrib timing:',
+                payload.prayerTiming?.Maghrib,
+              );
+              console.log(
+                'App.js - Sending Isha timing:',
+                payload.prayerTiming?.Isha,
+              );
+              console.log(
+                'App.js - Full prayer timing object being sent:',
+                payload.prayerTiming,
+              );
+              console.log('App.js - Full payload being sent:', payload);
+              console.log(
+                'App.js - Payload JSON:',
+                JSON.stringify(payload, null, 2),
+              );
+              console.log('=== END APP.JS SEND DEBUG ===');
+              const result = await apiService.updateProfile(payload);
+              if (result.success) {
+                console.log('=== APP.JS RESULT DEBUG ===');
+                console.log(
+                  'App.js - Result Fajr timing:',
+                  result.data?.preferences?.prayerTiming?.Fajr,
+                );
+                console.log(
+                  'App.js - Result Dhuhr timing:',
+                  result.data?.preferences?.prayerTiming?.Dhuhr,
+                );
+                console.log(
+                  'App.js - Result Asr timing:',
+                  result.data?.preferences?.prayerTiming?.Asr,
+                );
+                console.log(
+                  'App.js - Result Maghrib timing:',
+                  result.data?.preferences?.prayerTiming?.Maghrib,
+                );
+                console.log(
+                  'App.js - Result Isha timing:',
+                  result.data?.preferences?.prayerTiming?.Isha,
+                );
+                console.log(
+                  'App.js - Full prayer timing object received:',
+                  result.data?.preferences?.prayerTiming,
+                );
+                console.log('=== END APP.JS RESULT DEBUG ===');
+                // Update local user state with new preferences
+                console.log('App.js - Calling updateUser with:', result.data);
+                updateUser(result.data);
+                console.log('App.js - updateUser called successfully');
+                notify('Profile preferences saved successfully!', {
+                  type: 'success',
+                });
+                closeModal();
+              } else {
+                throw new Error('Failed to update profile preferences');
+              }
+            } catch (error) {
+              const message =
+                error.response?.data?.message ||
+                error.message ||
+                'Failed to save profile preferences. Please try again.';
+              logError(
+                error,
+                'Profile Preferences Update',
+                ERROR_SEVERITY.HIGH,
+              );
+              notify(message, { type: 'error' });
+              // Don't close modal on error so user can retry
+            }
+            break;
           case 'contact_admin':
             // Handle contact admin form
             try {
               const result = await apiService.submitContactForm(payload);
               if (result.success) {
-                notify(
-                  result.message ||
-                    'Message sent successfully! We will get back to you soon.',
-                  {
-                    type: 'success',
-                  },
-                );
+                // Show success message with WhatsApp info
+                const successMessage = result.data?.whatsappNotification
+                  ? `Message sent successfully! Admin will be notified on WhatsApp (${result.data.adminNumber}).`
+                  : result.message ||
+                    'Message sent successfully! We will get back to you soon.';
+
+                notify(successMessage, { type: 'success' });
+
+                // If WhatsApp notification was prepared, show additional info
+                if (result.data?.whatsappNotification) {
+                }
+
                 closeModal();
               } else {
                 throw new Error(result.message || 'Failed to send message');
@@ -187,33 +326,12 @@ function App() {
             }
             break;
           case 'info':
-            console.log('📝 Info case reached - saving data...');
             // Handle info modal saves (Aumoor, Jama'at Activities, etc.)
-            try {
-              // Save to localStorage for persistence
-              const currentData = JSON.parse(
-                localStorage.getItem('infoData_v1') || '{}',
-              );
-              const updatedData = { ...currentData };
-
-              if (payload.sections) {
-                updatedData[payload.type] = { sections: payload.sections };
-              } else if (payload.items) {
-                updatedData[payload.type] = { items: payload.items };
-              }
-
-              localStorage.setItem('infoData_v1', JSON.stringify(updatedData));
-              console.log('✅ Data saved to localStorage:', updatedData);
-              notify(`${payload.type} updated successfully!`, {
-                type: 'success',
-              });
-              closeModal();
-            } catch (error) {
-              console.error('Error saving info data:', error);
-              notify('Failed to save changes. Please try again.', {
-                type: 'error',
-              });
-            }
+            // Data is now saved directly in InfoModal component via API
+            notify(`${payload.type} updated successfully!`, {
+              type: 'success',
+            });
+            closeModal();
             break;
           default:
             closeModal();
@@ -227,7 +345,7 @@ function App() {
         notify(message, { type: 'error' });
       }
     },
-    [closeModal, notify, saveHouse, saveMember],
+    [closeModal, notify, saveHouse, saveMember, updateUser],
   );
 
   const handleNavigation = useCallback(
@@ -289,7 +407,12 @@ function App() {
       case 'dashboard':
         return <DashboardPage onNavigate={handleNavigation} />;
       case 'resources':
-        return <ResourcesPage />;
+        return (
+          <ResourcesPage
+            onClose={() => setCurrentView('main')}
+            onNavigate={(view) => setCurrentView(view)}
+          />
+        );
       case 'main':
       default:
         return <HomePage openModal={openModal} />;
@@ -307,6 +430,9 @@ function App() {
             isGuest={isGuest}
             onNavClick={handleNavigation}
             onShowProfile={() => openModal('user_profile', { user })}
+            onEnableNotifications={
+              isGuest ? null : () => openModal('notify_prefs', { user })
+            }
             prayerTimes={prayerTimes}
           />
         </ErrorBoundary>
@@ -318,6 +444,9 @@ function App() {
         <ErrorBoundary>
           <Footer />
         </ErrorBoundary>
+
+        {/* Back to Top Button */}
+        <BackToTop />
 
         {showModal && (
           <ErrorBoundary>

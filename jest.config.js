@@ -1,22 +1,28 @@
 module.exports = {
-  // Test environment - use node for backend tests, jsdom for frontend
-  testEnvironment: 'node',
+  // Test environment - use jsdom for React components, node for backend
+  testEnvironment: 'jsdom',
 
-  // Test file patterns for backend
-  testMatch: ['**/server/__tests__/**/*.test.js'],
-
-  // Coverage configuration for backend
-  collectCoverageFrom: [
-    'server/**/*.js',
-    '!**/node_modules/**',
-    '!**/coverage/**',
-    '!**/build/**',
-    '!**/dist/**',
-    '!**/*.config.js',
-    '!server/server.js',
+  // Test file patterns for both frontend and backend
+  testMatch: [
+    '**/src/__tests__/**/*.test.{js,jsx}',
+    '**/src/**/*.test.{js,jsx}',
+    '**/server/__tests__/**/*.test.js',
   ],
 
-  coverageDirectory: 'coverage/backend',
+  // Coverage configuration for both frontend and backend
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx}',
+    'server/**/*.js',
+    '!src/index.js',
+    '!src/App.js',
+    '!server/server.js',
+    '!**/node_modules/**',
+    '!**/coverage/**',
+    '!**/*.config.js',
+    '!**/setup.js',
+  ],
+
+  coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json'],
   coverageThreshold: {
     global: {
@@ -25,10 +31,37 @@ module.exports = {
       lines: 70,
       statements: 70,
     },
+    './src/components/': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+    './src/hooks/': {
+      branches: 85,
+      functions: 85,
+      lines: 85,
+      statements: 85,
+    },
+    './src/utils/': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
+    './server/': {
+      branches: 75,
+      functions: 75,
+      lines: 75,
+      statements: 75,
+    },
   },
 
-  // Setup files for backend
-  setupFilesAfterEnv: ['<rootDir>/server/test-setup.js'],
+  // Setup files
+  setupFilesAfterEnv: [
+    '<rootDir>/src/__tests__/setup.js',
+    '<rootDir>/server/test-setup.js',
+  ],
 
   // Module name mapping
   moduleNameMapper: {
@@ -61,33 +94,4 @@ module.exports = {
 
   // Ignore patterns
   testPathIgnorePatterns: ['/node_modules/', '/coverage/', '/build/', '/dist/'],
-
-  // Collect coverage from specific files
-  collectCoverageFrom: [
-    'src/**/*.{js,jsx}',
-    'server/**/*.js',
-    '!src/index.js',
-    '!src/App.js',
-    '!server/server.js',
-    '!**/node_modules/**',
-    '!**/coverage/**',
-    '!**/*.config.js',
-    '!**/setup.js',
-  ],
-
-  // Coverage thresholds for backend
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
-    },
-    './server/': {
-      branches: 75,
-      functions: 75,
-      lines: 75,
-      statements: 75,
-    },
-  },
 };

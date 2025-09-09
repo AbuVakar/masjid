@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const UserProfile = ({ user, onUpdatePreferences, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -59,14 +59,135 @@ const UserProfile = ({ user, onUpdatePreferences, onLogout }) => {
   };
 
   const handleSave = () => {
-    onUpdatePreferences(preferences);
+    // Create a clean payload with only the fields that backend expects
+    const payload = {
+      preferences: {
+        notifications: preferences.notifications || {},
+        prayerTiming: preferences.prayerTiming || {},
+        quietHours: preferences.quietHours || {},
+        theme: preferences.theme || 'light',
+        language: preferences.language || 'en',
+      },
+    };
+
+    console.log('=== USERPROFILE SAVE DEBUG ===');
+    console.log('UserProfile - Fajr timing:', preferences.prayerTiming?.Fajr);
+    console.log('UserProfile - Dhuhr timing:', preferences.prayerTiming?.Dhuhr);
+    console.log('UserProfile - Asr timing:', preferences.prayerTiming?.Asr);
+    console.log(
+      'UserProfile - Maghrib timing:',
+      preferences.prayerTiming?.Maghrib,
+    );
+    console.log('UserProfile - Isha timing:', preferences.prayerTiming?.Isha);
+    console.log(
+      'UserProfile - Full prayer timing object:',
+      preferences.prayerTiming,
+    );
+    console.log('UserProfile - Clean payload:', payload);
+    console.log(
+      'UserProfile - Payload JSON:',
+      JSON.stringify(payload, null, 2),
+    );
+    console.log('=== END USERPROFILE DEBUG ===');
+    onUpdatePreferences(payload, 'user_profile');
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setPreferences(user?.preferences || {});
+    if (user?.preferences) {
+      const defaultPrefs = {
+        notifications: {
+          prayer: true,
+          jamaat: true,
+          info: true,
+          clearAll: false,
+          admin: false,
+        },
+        prayerTiming: {
+          Fajr: 5,
+          Dhuhr: 5,
+          Asr: 5,
+          Maghrib: 5,
+          Isha: 5,
+        },
+        quietHours: {
+          enabled: false,
+          start: '22:00',
+          end: '06:00',
+        },
+      };
+
+      const updatedPrefs = {
+        ...defaultPrefs,
+        ...user.preferences,
+        notifications: {
+          ...defaultPrefs.notifications,
+          ...user.preferences.notifications,
+        },
+        prayerTiming: {
+          ...defaultPrefs.prayerTiming,
+          ...user.preferences.prayerTiming,
+        },
+        quietHours: {
+          ...defaultPrefs.quietHours,
+          ...user.preferences.quietHours,
+        },
+      };
+
+      setPreferences(updatedPrefs);
+    }
     setIsEditing(false);
   };
+
+  // Update preferences when user data changes (but not during editing)
+  useEffect(() => {
+    if (user?.preferences && !isEditing) {
+      const defaultPrefs = {
+        notifications: {
+          prayer: true,
+          jamaat: true,
+          info: true,
+          clearAll: false,
+          admin: false,
+        },
+        prayerTiming: {
+          Fajr: 5,
+          Dhuhr: 5,
+          Asr: 5,
+          Maghrib: 5,
+          Isha: 5,
+        },
+        quietHours: {
+          enabled: false,
+          start: '22:00',
+          end: '06:00',
+        },
+      };
+
+      const updatedPrefs = {
+        ...defaultPrefs,
+        ...user.preferences,
+        notifications: {
+          ...defaultPrefs.notifications,
+          ...user.preferences.notifications,
+        },
+        prayerTiming: {
+          ...defaultPrefs.prayerTiming,
+          ...user.preferences.prayerTiming,
+        },
+        quietHours: {
+          ...defaultPrefs.quietHours,
+          ...user.preferences.quietHours,
+        },
+      };
+
+      console.log(
+        'UserProfile - Updating preferences from user data:',
+        updatedPrefs,
+      );
+      setPreferences(updatedPrefs);
+    }
+  }, [user?.preferences, isEditing]);
 
   if (!user) {
     return (
@@ -77,8 +198,10 @@ const UserProfile = ({ user, onUpdatePreferences, onLogout }) => {
     );
   }
 
-  // Debug user object
+  // Debug user object and preferences
   console.log('UserProfile - User object:', user);
+  console.log('UserProfile - Current preferences state:', preferences);
+  console.log('UserProfile - User preferences:', user?.preferences);
 
   return (
     <div className='user-profile-form'>

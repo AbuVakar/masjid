@@ -10,7 +10,102 @@ import InfoModal from './InfoModal';
 import UserProfile from './UserProfile';
 import BackupRestoreModal from './BackupRestoreModal';
 import PrayerTimeHistory from './PrayerTimeHistory';
-import ErrorBoundary from './ErrorBoundary';
+import AdminDashboard from './AdminDashboard';
+import AdvancedNotificationSettings from './AdvancedNotificationSettings';
+import './AdvancedNotificationSettings.css';
+import NotificationTester from './NotificationTester';
+import './NotificationTester.css';
+
+// Function to fetch sunset time from API with better error handling
+const fetchSunsetTime = async (
+  date,
+  latitude = 28.7774,
+  longitude = 78.0603,
+) => {
+  try {
+    // Format date as YYYY-MM-DD
+    const dateStr = date.toISOString().split('T')[0];
+
+    // Use Sunrise-Sunset API with formatted=0 for 24-hour format
+    const url = `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateStr}&formatted=0`;
+
+    console.log(`🌅 Modal - Fetching sunset from: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      // Add timeout
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    console.log(`🌅 Modal - API Response:`, data);
+
+    if (data.status === 'OK' && data.results.sunset) {
+      // Convert UTC time to IST (UTC+5:30)
+      const sunsetUTC = new Date(data.results.sunset);
+      const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000); // Add 5.5 hours
+
+      // Use UTC methods since the Date object is still in UTC timezone
+      const hours = sunsetIST.getUTCHours();
+      const minutes = sunsetIST.getUTCMinutes();
+
+      console.log(`🌅 Modal - Raw API Response: ${data.results.sunset}`);
+      console.log(`🌅 Modal - UTC Sunset: ${sunsetUTC.toISOString()}`);
+      console.log(`🌅 Modal - IST Sunset: ${sunsetIST.toISOString()}`);
+      console.log(
+        `🌅 Modal - Final Time: ${hours}:${minutes.toString().padStart(2, '0')}`,
+      );
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    } else {
+      throw new Error('Failed to fetch sunset data');
+    }
+  } catch (error) {
+    console.warn(
+      'Modal - Sunset API failed, using fallback calculation:',
+      error.message,
+    );
+    // Fallback to approximate calculation if API fails
+    return calculateSunsetFallback(date, latitude, longitude);
+  }
+};
+
+// Fallback calculation function (same as Clock.js)
+const calculateSunsetFallback = (
+  date,
+  latitude = 28.7774,
+  longitude = 78.0603,
+) => {
+  const dayOfYear = Math.floor(
+    (date - new Date(date.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24),
+  );
+
+  // Base sunset time for the latitude
+  let baseHour = 18;
+  let baseMinute = 30;
+
+  // Seasonal adjustment
+  const daysFromSolstice = Math.abs(dayOfYear - 172);
+  const seasonalAdjustment =
+    Math.cos((daysFromSolstice / 365) * 2 * Math.PI) * 60;
+
+  let totalMinutes = baseHour * 60 + baseMinute + seasonalAdjustment;
+  let finalHour = Math.floor(totalMinutes / 60);
+  let finalMinute = Math.floor(totalMinutes % 60);
+
+  if (finalHour >= 24) finalHour = finalHour % 24;
+  if (finalHour < 0) finalHour = 24 + finalHour;
+
+  return `${finalHour.toString().padStart(2, '0')}:${finalMinute.toString().padStart(2, '0')}`;
+};
 
 const Modal = ({
   type,
@@ -21,14 +116,13 @@ const Modal = ({
   L,
   loading = false,
 }) => {
+  console.log('🚀 Modal Component Mounted - type:', type, 'data:', data);
+  console.log('🔍 Modal - InfoModal import successful:', !!InfoModal);
   const { notify } = useNotify();
   const { isAdmin } = useUser();
   // State declarations at the top level to avoid conditional calls
   const [formData, setFormData] = useState({});
-  // Notify prefs state must not be conditional
-  const [localPrefs, setLocalPrefs] = useState(
-    () => (type === 'notify_prefs' && data && data.prefs) || {},
-  );
+
   // Contact Admin form state (keep un-conditional)
   const [contactForm, setContactForm] = useState({
     category: 'Jamaat',
@@ -46,6 +140,9 @@ const Modal = ({
     Isha: data?.times?.Isha || '20:45',
   });
 
+  // Dynamic Maghrib time state
+  const [dynamicMaghrib, setDynamicMaghrib] = useState('18:30');
+
   // Prayer time history view state
   const [showHistory, setShowHistory] = useState(false);
   const [timeValidity, setTimeValidity] = useState({
@@ -59,19 +156,120 @@ const Modal = ({
   // Contact form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch dynamic Maghrib time when timetable modal opens
+  useEffect(() => {
+    if (type === 'timetable') {
+      const fetchMaghribTime = async () => {
+        try {
+          const now = new Date();
+          const today = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+          );
+          const sunset = await fetchSunsetTime(today, 28.7774, 78.0603);
+          setDynamicMaghrib(sunset);
+          console.log(`🌅 Modal - Dynamic Maghrib set to: ${sunset}`);
+        } catch (error) {
+          console.error('Failed to fetch Maghrib time:', error);
+          // Use fallback calculation
+          const now = new Date();
+          const today = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+          );
+          const fallbackSunset = calculateSunsetFallback(
+            today,
+            28.7774,
+            78.0603,
+          );
+          setDynamicMaghrib(fallbackSunset);
+          console.log(`🌅 Modal - Fallback Maghrib set to: ${fallbackSunset}`);
+        }
+      };
+
+      fetchMaghribTime();
+    }
+  }, [type]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (type) {
+      // Disable body scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+
+      // Re-enable body scroll when modal closes
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.touchAction = '';
+      };
+    }
+  }, [type]);
+
+  // Check for daily date change and update Maghrib time
+  useEffect(() => {
+    if (type === 'timetable') {
+      const checkDailyUpdate = () => {
+        const now = new Date();
+        const currentDate = now.toDateString();
+
+        // Check if we need to update Maghrib time (no localStorage needed)
+        console.log(`📅 Date: ${currentDate}, updating Maghrib time...`);
+
+        // Fetch new Maghrib time
+        const fetchMaghribTime = async () => {
+          try {
+            const today = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+            );
+            const sunset = await fetchSunsetTime(today, 28.7774, 78.0603);
+            setDynamicMaghrib(sunset);
+            console.log(`🌅 Modal - Daily update: Maghrib set to ${sunset}`);
+          } catch (error) {
+            console.error('Failed to fetch daily Maghrib time:', error);
+            const today = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+            );
+            const fallbackSunset = calculateSunsetFallback(
+              today,
+              28.7774,
+              78.0603,
+            );
+            setDynamicMaghrib(fallbackSunset);
+            console.log(
+              `🌅 Modal - Daily fallback: Maghrib set to ${fallbackSunset}`,
+            );
+          }
+        };
+
+        fetchMaghribTime();
+      };
+
+      // Check immediately
+      checkDailyUpdate();
+
+      // Set up interval to check every hour
+      const interval = setInterval(checkDailyUpdate, 60 * 60 * 1000); // 1 hour
+
+      return () => clearInterval(interval);
+    }
+  }, [type]);
+
   // Update times when data prop changes
   useEffect(() => {
     if (type === 'timetable' && data?.times) {
-      setTimes(data.times);
+      setTimes({
+        ...data.times,
+        Maghrib: dynamicMaghrib, // Use dynamic Maghrib time
+      });
     }
-  }, [data, type]);
-
-  // Sync notify prefs when modal opens for notify_prefs
-  useEffect(() => {
-    if (type === 'notify_prefs') {
-      setLocalPrefs((data && data.prefs) || {});
-    }
-  }, [type, data]);
+  }, [data, type, dynamicMaghrib]);
 
   // Reset contact form when opening contact modal
   useEffect(() => {
@@ -85,7 +283,10 @@ const Modal = ({
       const isEdit = data?.mode === 'edit';
       console.log('🔍 House modal - isEdit:', isEdit, 'data:', data);
       const initialData = isEdit
-        ? { ...(data?.house || {}) }
+        ? {
+            ...(data?.house || {}),
+            id: data?.house?.id || data?.house?._id, // Ensure ID field consistency
+          }
         : { number: '', street: '' };
       console.log('🔍 House modal - initialData:', initialData);
       setFormData(initialData);
@@ -96,7 +297,7 @@ const Modal = ({
           ? {
               ...(data?.member || {}),
               houseId: data?.houseId,
-              id: data?.member?.id || data?.memberId,
+              id: data?.member?.id || data?.member?._id || data?.memberId,
               maktab: data?.member?.maktab ?? 'no',
               dawatCounts: data?.member?.dawatCounts || {
                 '3-day': 0,
@@ -146,7 +347,17 @@ const Modal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const sanitizedValue = sanitizeString(value);
+
+    // Don't sanitize fields that need to preserve spaces
+    const fieldsToPreserveSpaces = [
+      'street',
+      'name',
+      'fatherName',
+      'occupation',
+    ];
+    const sanitizedValue = fieldsToPreserveSpaces.includes(name)
+      ? value
+      : sanitizeString(value);
 
     if (name === 'dawat') {
       // When Dawat Status changes, update dawatCounts accordingly
@@ -195,6 +406,7 @@ const Modal = ({
 
         // Convert age to number and ensure all required fields are present
         payload.age = ageNum;
+        payload.isChild = ageNum < 14; // Set isChild based on age
         payload.mode = data?.mode;
         payload.houseId = data?.houseId;
 
@@ -254,8 +466,8 @@ const Modal = ({
 
   if (type === 'house') {
     return (
-      <div className='modal-backdrop'>
-        <div className='modal'>
+      <div className='modal-backdrop house-modal-backdrop'>
+        <div className='modal house-modal'>
           <h3>
             {data?.mode === 'add'
               ? 'Add New House'
@@ -295,8 +507,8 @@ const Modal = ({
 
   if (type === 'member') {
     return (
-      <div className='modal-backdrop'>
-        <div className='modal'>
+      <div className='modal-backdrop member-modal-backdrop'>
+        <div className='modal member-modal'>
           <h3>
             {data?.mode === 'add' ? 'Add Member' : 'Edit Member'} — House{' '}
             {data?.houseId ?? ''}
@@ -535,8 +747,14 @@ const Modal = ({
     };
 
     const handleSaveClick = () => {
-      // Validate all times before saving
-      for (const prayer in times) {
+      console.log('🔍 Modal - handleSaveClick called');
+      console.log('🔍 Modal - isAdmin:', isAdmin);
+      console.log('🔍 Modal - times:', times);
+      console.log('🔍 Modal - onSave function exists:', !!onSave);
+
+      // Validate only prayer times before saving
+      const prayerTimes = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+      for (const prayer of prayerTimes) {
         if (
           Object.prototype.hasOwnProperty.call(times, prayer) &&
           !validateTime(times[prayer])
@@ -550,6 +768,7 @@ const Modal = ({
       }
 
       if (onSave) {
+        console.log('🔍 Modal - Calling onSave with times:', times);
         onSave({ times }, type);
       } else {
         console.warn('onSave function not provided to Modal component');
@@ -566,179 +785,689 @@ const Modal = ({
         Fajr: '05:15',
         Dhuhr: '14:15',
         Asr: '17:30',
-        Maghrib: times.Maghrib,
+        Maghrib: dynamicMaghrib, // Use dynamic Maghrib time
         Isha: '20:45',
       };
       const base = data && data.times ? data.times : fallback; // original values or sensible defaults
-      setTimes(base);
+      setTimes({
+        ...base,
+        Maghrib: dynamicMaghrib, // Ensure Maghrib stays dynamic
+      });
     };
 
     return (
-      <div className='modal-backdrop'>
-        <div className='modal'>
-          <div className='timetable-ayah'>
-            <div className='ayah-text'>
-              Beshak Namaz apne muqarrar waqto mein momino par farz hai
+      <div className='modal-backdrop timetable-modal-backdrop'>
+        <div className='modal timetable-modal'>
+          <div className='timetable-container'>
+            <div className='timetable-header'>
+              <div className='timetable-ayah'>
+                <div className='ayah-text'>
+                  Beshak Namaz apne muqarrar waqto mein momino par farz hai
+                </div>
+                <div className='ayah-ref'>(Surah An Nisa — Ayat 103)</div>
+              </div>
             </div>
-            <div className='ayah-ref'>(Surah An Nisa — Ayat 103)</div>
-          </div>
 
-          <div
-            style={{
-              background: '#fff3cd',
-              padding: '8px 12px',
-              borderRadius: 6,
-              marginBottom: 10,
-              fontSize: '0.9rem',
-              lineHeight: 1.3,
-              color: '#856404',
-              textAlign: 'center',
-              border: '1px solid #ffeeba',
-            }}
-          >
-            <strong>Note:</strong> Maghrib automatically calculated from sunset
-            for your location (28°46'38.8"N 78°03'37.0"E); other times editable.
-            On Fridays, Dhuhr switches to Juma at 1:10 PM.
-          </div>
+            <div className='timetable-content'>
+              <div className='note-section'>
+                <div className='note-content'>
+                  <strong>Note:</strong> Maghrib automatically calculated from
+                  sunset for your location (28°46'38.8"N 78°03'37.0"E); other
+                  times editable. On Fridays, Dhuhr switches to Juma at 1:10 PM.
+                </div>
+              </div>
 
-          <div className='timetable-grid'>
-            <div className='time-field'>
-              <label>Fajr</label>
-              <input
-                type='time'
-                step='60'
-                name='Fajr'
-                value={times.Fajr}
-                onChange={onChange}
-                className={!timeValidity.Fajr ? 'invalid-time' : ''}
-              />
-            </div>
-            <div className='time-field'>
-              <label>Dhuhr</label>
-              <input
-                type='time'
-                step='60'
-                name='Dhuhr'
-                value={times.Dhuhr}
-                onChange={onChange}
-                className={!timeValidity.Dhuhr ? 'invalid-time' : ''}
-              />
-            </div>
-            <div className='time-field'>
-              <label>Asr</label>
-              <input
-                type='time'
-                step='60'
-                name='Asr'
-                value={times.Asr}
-                onChange={onChange}
-                className={!timeValidity.Asr ? 'invalid-time' : ''}
-              />
-            </div>
-            <div className='time-field'>
-              <label>
-                Maghrib <span className='badge-auto'>Auto</span>
-              </label>
-              <input
-                type='time'
-                step='60'
-                name='Maghrib'
-                value={times.Maghrib}
-                onChange={onChange}
-                disabled
-              />
-            </div>
-            <div className='time-field'>
-              <label>Isha</label>
-              <input
-                type='time'
-                step='60'
-                name='Isha'
-                value={times.Isha}
-                onChange={onChange}
-                className={!timeValidity.Isha ? 'invalid-time' : ''}
-              />
-            </div>
-          </div>
+              <div className='timetable-grid'>
+                <div className='time-field'>
+                  <label>Fajr</label>
+                  <input
+                    type='time'
+                    step='60'
+                    name='Fajr'
+                    value={times.Fajr}
+                    onChange={onChange}
+                    className={!timeValidity.Fajr ? 'invalid-time' : ''}
+                    style={{ cursor: 'text' }}
+                  />
+                </div>
+                <div className='time-field'>
+                  <label>Dhuhr</label>
+                  <input
+                    type='time'
+                    step='60'
+                    name='Dhuhr'
+                    value={times.Dhuhr}
+                    onChange={onChange}
+                    className={!timeValidity.Dhuhr ? 'invalid-time' : ''}
+                    style={{ cursor: 'text' }}
+                  />
+                </div>
+                <div className='time-field'>
+                  <label>Asr</label>
+                  <input
+                    type='time'
+                    step='60'
+                    name='Asr'
+                    value={times.Asr}
+                    onChange={onChange}
+                    className={!timeValidity.Asr ? 'invalid-time' : ''}
+                    style={{ cursor: 'text' }}
+                  />
+                </div>
+                <div className='time-field'>
+                  <label>
+                    Maghrib <span className='badge-auto'>Auto</span>
+                  </label>
+                  <input
+                    type='time'
+                    step='60'
+                    name='Maghrib'
+                    value={times.Maghrib}
+                    onChange={onChange}
+                    disabled
+                  />
+                </div>
+                <div className='time-field'>
+                  <label>Isha</label>
+                  <input
+                    type='time'
+                    step='60'
+                    name='Isha'
+                    value={times.Isha}
+                    onChange={onChange}
+                    className={!timeValidity.Isha ? 'invalid-time' : ''}
+                    style={{ cursor: 'text' }}
+                  />
+                </div>
+              </div>
 
-          <div className='prayer-summary'>
-            <div className='summary-heading'>
-              <span className='heading-title'>Prayer Timetable</span>
-              <span className='heading-sub'>Fazilatien</span>
+              <div className='prayer-summary'>
+                <div className='summary-heading'>
+                  <span className='heading-title'>Prayer Timetable</span>
+                  <span className='heading-sub'>Fazilatien</span>
+                </div>
+                <ul className='prayer-list'>
+                  <li className='prayer-item'>
+                    <div className='prayer-name'>Fajr</div>
+                    <div className='prayer-time'>{times.Fajr}</div>
+                    <div className='prayer-quote'>
+                      Fajr chehre ka noor hai — ise kabhi na chhodo.
+                    </div>
+                  </li>
+                  <li className='prayer-item'>
+                    <div className='prayer-name'>Dhuhr</div>
+                    <div className='prayer-time'>{times.Dhuhr}</div>
+                    <div className='prayer-quote'>
+                      Dhuhr rooh ko sukoon deta hai, din ki thakan ko mitaata
+                      hai.
+                    </div>
+                  </li>
+                  <li className='prayer-item'>
+                    <div className='prayer-name'>Asr</div>
+                    <div className='prayer-time'>{times.Asr}</div>
+                    <div className='prayer-quote'>
+                      Asr ka waqt ghanimat hai, guzar jaane se pehle apne Rabb
+                      ko yaad karo.
+                    </div>
+                  </li>
+                  <li className='prayer-item'>
+                    <div className='prayer-name'>Maghrib</div>
+                    <div className='prayer-time'>{times.Maghrib}</div>
+                    <div className='prayer-quote highlight'>
+                      Maghrib duaon ki qabooliyat ka waqt hai.
+                    </div>
+                  </li>
+                  <li className='prayer-item'>
+                    <div className='prayer-name'>Isha</div>
+                    <div className='prayer-time'>{times.Isha}</div>
+                    <div className='prayer-quote'>
+                      Isha imaan ko mazboot karta hai, aur neend ko barkat deta
+                      hai.
+                    </div>
+                  </li>
+                </ul>
+              </div>
             </div>
-            <ul className='prayer-list'>
-              <li className='prayer-item'>
-                <div className='prayer-name'>Fajr</div>
-                <div className='prayer-time'>{times.Fajr}</div>
-                <div className='prayer-quote'>
-                  Fajr chehre ka noor hai — ise kabhi na chhodo.
-                </div>
-              </li>
-              <li className='prayer-item'>
-                <div className='prayer-name'>Dhuhr</div>
-                <div className='prayer-time'>{times.Dhuhr}</div>
-                <div className='prayer-quote'>
-                  Dhuhr rooh ko sukoon deta hai, din ki thakan ko mitaata hai.
-                </div>
-              </li>
-              <li className='prayer-item'>
-                <div className='prayer-name'>Asr</div>
-                <div className='prayer-time'>{times.Asr}</div>
-                <div className='prayer-quote'>
-                  Asr ka waqt ghanimat hai, guzar jaane se pehle apne Rabb ko
-                  yaad karo.
-                </div>
-              </li>
-              <li className='prayer-item'>
-                <div className='prayer-name'>Maghrib</div>
-                <div className='prayer-time'>{times.Maghrib}</div>
-                <div className='prayer-quote highlight'>
-                  Maghrib duaon ki qabooliyat ka waqt hai.
-                </div>
-              </li>
-              <li className='prayer-item'>
-                <div className='prayer-name'>Isha</div>
-                <div className='prayer-time'>{times.Isha}</div>
-                <div className='prayer-quote'>
-                  Isha imaan ko mazboot karta hai, aur neend ko barkat deta hai.
-                </div>
-              </li>
-            </ul>
-          </div>
 
-          <div className='actions'>
-            <button type='button' className='ghost' onClick={onClose}>
-              Close
-            </button>
-            <button
-              type='button'
-              className='ghost'
-              onClick={() => {
-                console.log('🔍 Debug button clicked - isAdmin:', isAdmin);
-              }}
-            >
-              🔍 Debug (Admin: {isAdmin ? 'Yes' : 'No'})
-            </button>
-            {isAdmin && (
+            <div className='timetable-actions'>
               <button
                 type='button'
-                className='ghost'
-                onClick={() => {
-                  console.log('📜 History button clicked - isAdmin:', isAdmin);
-                  setShowHistory(true);
-                  console.log('📜 showHistory set to true');
-                }}
+                className='action-btn ghost'
+                onClick={onClose}
               >
-                📜 History
+                Close
               </button>
-            )}
-            <button type='button' className='ghost' onClick={handleResetClick}>
-              Reset
-            </button>
-            <button type='button' onClick={handleSaveClick}>
-              Save
-            </button>
+
+              {isAdmin && (
+                <button
+                  type='button'
+                  className='action-btn ghost'
+                  onClick={() => {
+                    console.log(
+                      '📜 History button clicked - isAdmin:',
+                      isAdmin,
+                    );
+                    setShowHistory(true);
+                    console.log('📜 showHistory set to true');
+                  }}
+                >
+                  📜 History
+                </button>
+              )}
+              <button
+                type='button'
+                className='action-btn ghost'
+                onClick={handleResetClick}
+              >
+                Reset
+              </button>
+              <button
+                type='button'
+                className='action-btn primary'
+                onClick={handleSaveClick}
+              >
+                Save
+              </button>
+            </div>
           </div>
+          {/* Premium CSS Styles - Converted to inline styles */}
+          <style>{`
+            .modal-backdrop {
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background: rgba(0, 0, 0, 0.7);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 99999;
+              backdrop-filter: blur(5px);
+              overflow: hidden;
+              touch-action: none;
+            }
+
+            .modal {
+              background: rgba(0, 0, 0, 0.4);
+              backdrop-filter: blur(25px);
+              border: 2px solid rgba(0, 212, 255, 0.3);
+              border-radius: 20px;
+              max-width: 800px;
+              width: 90%;
+              max-height: 95vh;
+              overflow: hidden;
+              box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+              position: relative;
+              z-index: 100000;
+            }
+
+            .timetable-modal {
+              padding: 0;
+            }
+
+            .timetable-container {
+              background: rgba(0, 0, 0, 0.4);
+              backdrop-filter: blur(25px);
+              border-radius: 20px;
+              overflow: hidden;
+              max-width: 100%;
+              width: 100%;
+              margin: 0;
+              max-height: 95vh;
+              min-height: 400px;
+              display: flex;
+              flex-direction: column;
+              position: relative;
+              justify-content: space-between;
+            }
+
+            .timetable-header {
+              background: linear-gradient(135deg, #00d4ff, #0099cc, #006699);
+              color: white;
+              padding: 20px;
+              text-align: center;
+              position: relative;
+              flex-shrink: 0;
+            }
+
+            .timetable-header::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: linear-gradient(
+                135deg,
+                rgba(0, 0, 0, 0.2) 0%,
+                rgba(0, 0, 0, 0.1) 100%
+              );
+            }
+
+            .timetable-ayah {
+              position: relative;
+              z-index: 1;
+            }
+
+            .ayah-text {
+              font-weight: 900;
+              font-size: 1.6rem;
+              line-height: 1.35;
+              color: #ffffff;
+              letter-spacing: 0.2px;
+              text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+              margin-bottom: 6px;
+            }
+
+            .ayah-ref {
+              font-size: 0.8rem;
+              opacity: 0.9;
+              color: rgba(255, 255, 255, 0.9);
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+
+            .timetable-content {
+              padding: 20px;
+              background: rgba(0, 0, 0, 0.3);
+              flex: 1;
+              overflow-y: auto;
+              max-height: calc(95vh - 280px);
+              -webkit-overflow-scrolling: touch;
+              overscroll-behavior: contain;
+            }
+
+            .note-section {
+              margin-bottom: 15px;
+            }
+
+            .note-content {
+              background: rgba(0, 212, 255, 0.1);
+              border: 1px solid rgba(0, 212, 255, 0.3);
+              border-radius: 10px;
+              padding: 10px 12px;
+              font-size: 0.85rem;
+              line-height: 1.4;
+              color: #00d4ff;
+              text-align: center;
+              backdrop-filter: blur(10px);
+            }
+
+            .timetable-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+              gap: 12px;
+              margin-bottom: 20px;
+            }
+
+            .time-field {
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
+              background: rgba(0, 0, 0, 0.4);
+              border: 1px solid rgba(0, 212, 255, 0.2);
+              border-radius: 10px;
+              padding: 12px;
+              backdrop-filter: blur(10px);
+            }
+
+            .time-field label {
+              font-weight: 700;
+              color: #00d4ff;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 0.85rem;
+              line-height: 1.2;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+
+            .time-field input[type='time'] {
+              padding: 8px 10px;
+              border: 1px solid rgba(0, 212, 255, 0.3);
+              border-radius: 6px;
+              font-size: 0.9rem;
+              background: rgba(255, 255, 255, 0.9);
+              color: #000000;
+              width: 100%;
+              box-sizing: border-box;
+              backdrop-filter: blur(10px);
+              transition: all 0.3s ease;
+            }
+
+            .time-field input[type='time']:focus {
+              outline: none;
+              border-color: rgba(0, 212, 255, 0.6);
+              box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+            }
+
+            .time-field input[type='time']:disabled {
+              background: rgba(255, 255, 255, 0.7);
+              color: rgba(0, 0, 0, 0.5);
+              cursor: not-allowed;
+            }
+
+            .badge-auto {
+              background: rgba(0, 255, 136, 0.2);
+              color: #00ff88;
+              border: 1px solid rgba(0, 255, 136, 0.4);
+              border-radius: 10px;
+              padding: 2px 6px;
+              font-size: 0.65rem;
+              font-weight: 600;
+            }
+
+            .invalid-time {
+              border-color: #ff6b6b !important;
+              box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1) !important;
+            }
+
+            .prayer-summary {
+              margin-top: 15px;
+            }
+
+            .summary-heading {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 12px 15px;
+              background: rgba(0, 212, 255, 0.1);
+              border: 1px solid rgba(0, 212, 255, 0.3);
+              border-radius: 10px;
+              color: #00d4ff;
+              margin-bottom: 12px;
+              backdrop-filter: blur(10px);
+            }
+
+            .summary-heading .heading-title {
+              font-weight: 800;
+              font-size: 1.1rem;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+
+            .summary-heading .heading-sub {
+              font-size: 0.75rem;
+              opacity: 0.9;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+
+            .prayer-list {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+              display: grid;
+              gap: 10px;
+            }
+
+            .prayer-item {
+              display: grid;
+              grid-template-columns: 70px 60px 1fr;
+              gap: 12px;
+              align-items: center;
+              padding: 12px;
+              background: rgba(0, 0, 0, 0.4);
+              border: 1px solid rgba(0, 212, 255, 0.2);
+              border-radius: 10px;
+              backdrop-filter: blur(10px);
+            }
+
+            .prayer-name {
+              font-weight: 800;
+              color: #00d4ff;
+              font-size: 0.85rem;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+
+            .prayer-time {
+              font-weight: 700;
+              color: #00ff88;
+              font-size: 0.9rem;
+              font-family: 'Courier New', monospace;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+
+            .prayer-quote {
+              color: rgba(255, 255, 255, 0.9);
+              font-size: 0.8rem;
+              line-height: 1.3;
+              font-style: italic;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+
+            .prayer-quote.highlight {
+              color: #00d4ff;
+              font-weight: 600;
+            }
+
+            .timetable-actions {
+              display: flex;
+              gap: 10px;
+              justify-content: center;
+              padding: 15px 20px;
+              border-top: 1px solid rgba(0, 212, 255, 0.2);
+              background: rgba(0, 0, 0, 0.5);
+              flex-wrap: wrap;
+              flex-shrink: 0;
+              position: sticky;
+              bottom: 0;
+              z-index: 10;
+            }
+
+            .action-btn {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              padding: 8px 15px;
+              border: none;
+              border-radius: 8px;
+              font-size: 0.85rem;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);
+            }
+
+            .action-btn.ghost {
+              background: rgba(0, 212, 255, 0.2);
+              color: #00d4ff;
+              border: 1px solid rgba(0, 212, 255, 0.4);
+            }
+
+            .action-btn.ghost:hover {
+              background: rgba(0, 212, 255, 0.3);
+              border-color: rgba(0, 212, 255, 0.6);
+              transform: translateY(-2px);
+            }
+
+            .action-btn.primary {
+              background: linear-gradient(135deg, #00d4ff, #0099cc);
+              color: white;
+              box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+            }
+
+            .action-btn.primary:hover {
+              background: linear-gradient(135deg, #0099cc, #006699);
+              transform: translateY(-2px);
+              box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+            }
+
+            /* Responsive Design */
+            @media (max-width: 768px) {
+              .modal {
+                width: 95%;
+                max-height: 98vh;
+                overflow: hidden;
+              }
+
+              .timetable-container {
+                max-height: 98vh;
+                overflow: hidden;
+              }
+
+              .timetable-header {
+                padding: 15px;
+                flex-shrink: 0;
+              }
+
+              .ayah-text {
+                font-size: 1.3rem;
+              }
+
+              .timetable-content {
+                padding: 15px;
+                max-height: calc(98vh - 260px);
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                overflow-y: auto;
+              }
+
+              .timetable-grid {
+                grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+                gap: 10px;
+              }
+
+              .prayer-item {
+                grid-template-columns: 60px 50px 1fr;
+                gap: 10px;
+                padding: 10px;
+              }
+
+              .timetable-actions {
+                flex-direction: column;
+                gap: 6px;
+                padding: 12px;
+                position: sticky;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.95);
+                backdrop-filter: blur(15px);
+                border-top: 1px solid rgba(0, 212, 255, 0.3);
+                z-index: 20;
+                margin-top: 8px;
+              }
+
+              .action-btn {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                gap: 4px;
+                min-height: 40px;
+                border-radius: 8px;
+                font-weight: 600;
+              }
+            }
+
+            /* Medium mobile breakpoint */
+            @media (max-width: 600px) {
+              .timetable-actions {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 5px;
+                padding: 10px;
+                justify-content: center;
+                position: sticky;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.95);
+                backdrop-filter: blur(15px);
+                border-top: 1px solid rgba(0, 212, 255, 0.3);
+                z-index: 20;
+                margin-top: 8px;
+              }
+
+              .action-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+                gap: 4px;
+                min-width: 70px;
+                min-height: 40px;
+                flex: 1;
+                max-width: 90px;
+                border-radius: 8px;
+                font-weight: 600;
+              }
+
+              .action-btn.primary {
+                flex: 1.5;
+                max-width: 110px;
+              }
+            }
+
+            @media (max-width: 480px) {
+              .modal {
+                width: 98%;
+                border-radius: 15px;
+                max-height: 100vh;
+                overflow: hidden;
+              }
+
+              .timetable-container {
+                max-height: 100vh;
+                overflow: hidden;
+              }
+
+              .timetable-header {
+                padding: 12px;
+                flex-shrink: 0;
+              }
+
+              .ayah-text {
+                font-size: 1.1rem;
+              }
+
+              .timetable-content {
+                padding: 12px;
+                max-height: calc(100vh - 240px);
+                overflow-y: auto;
+              }
+
+              .timetable-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+              }
+
+              .prayer-item {
+                grid-template-columns: 1fr;
+                gap: 6px;
+                text-align: center;
+              }
+
+              .prayer-name,
+              .prayer-time {
+                text-align: center;
+              }
+
+              /* Ultra-compact buttons for small mobile */
+              .timetable-actions {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 4px;
+                padding: 8px;
+                justify-content: center;
+                position: sticky;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.95);
+                backdrop-filter: blur(15px);
+                border-top: 1px solid rgba(0, 212, 255, 0.3);
+                z-index: 20;
+                margin-top: 8px;
+              }
+
+              .action-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+                gap: 4px;
+                min-width: 70px;
+                min-height: 40px;
+                flex: 1;
+                max-width: 90px;
+                border-radius: 8px;
+                font-weight: 600;
+              }
+
+              .action-btn.primary {
+                flex: 2;
+                max-width: 120px;
+              }
+            }
+          `}</style>
         </div>
       </div>
     );
@@ -763,8 +1492,8 @@ const Modal = ({
       }
     };
     return (
-      <div className='modal-backdrop'>
-        <div className='modal' style={{ maxWidth: 720 }}>
+      <div className='modal-backdrop export-modal-backdrop'>
+        <div className='modal export-modal'>
           <h3 style={{ marginBottom: 6 }}>
             {type === 'export_pdf' ? 'Export PDF Columns' : 'Export Columns'}
           </h3>
@@ -814,31 +1543,45 @@ const Modal = ({
   // Info modals (imam, running, aumoor, etc.)
   // Info modals (imam, running, aumoor, etc.)
   if (type === 'info') {
-    // For 'contact' info, show read-only list; others editable
-    const readOnly = data === 'contact';
+    // Role-based access control for contact info
+    const readOnly = data === 'contact' && !isAdmin; // Only admin can edit contact info
     console.log(
       '🔍 Modal - info type:',
       data,
       'readOnly:',
       readOnly,
+      'isAdmin:',
+      isAdmin,
       'onSave:',
       !!onSave,
+      'Contact edit access:',
+      data === 'contact'
+        ? isAdmin
+          ? 'ADMIN CAN EDIT'
+          : 'READ-ONLY FOR USER'
+        : 'N/A',
     );
+    console.log('🔍 Modal - About to render InfoModal with data:', data);
+    console.log('🔍 Modal - Rendering InfoModal component now');
     return (
-      <InfoModal
-        data={data}
-        onClose={onClose}
-        onSave={onSave}
-        readOnly={readOnly}
-      />
+      <div className='modal-backdrop info-modal-backdrop'>
+        <div className='modal info-modal'>
+          <InfoModal
+            data={data}
+            onClose={onClose}
+            onSave={onSave}
+            readOnly={readOnly}
+          />
+        </div>
+      </div>
     );
   }
 
   if (type === 'about') {
     const VisionMission = require('./VisionMission.jsx').default;
     return (
-      <div className='modal-backdrop'>
-        <div className='modal' style={{ maxWidth: 900 }}>
+      <div className='modal-backdrop about-modal-backdrop'>
+        <div className='modal about-modal'>
           <h3 style={{ marginBottom: 8 }}>About Us</h3>
           <VisionMission />
           <div className='actions'>
@@ -852,70 +1595,136 @@ const Modal = ({
   }
 
   if (type === 'contact_admin') {
-    const onChange = (e) =>
-      setContactForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+    const onChange = (e) => {
+      const { name, value } = e.target;
+      // Preserve spaces in name and message fields
+      const fieldsToPreserveSpaces = ['name', 'message'];
+      const sanitizedValue = fieldsToPreserveSpaces.includes(name)
+        ? value
+        : sanitizeString(value);
+      setContactForm((f) => ({ ...f, [name]: sanitizedValue }));
+    };
+
+    // Set default category if not already set
+    if (!contactForm.category) {
+      setContactForm((f) => ({ ...f, category: 'General' }));
+    }
 
     const handleSend = async () => {
       if (isSubmitting) return; // Prevent double submission
 
-      if (!contactForm.name.trim()) {
-        notify('Please enter your name', { type: 'error' });
+      // Validate category
+      if (!contactForm.category) {
+        notify('Please select a category', {
+          type: 'error',
+        });
         return;
       }
+
+      // Validate name
+      if (!contactForm.name.trim()) {
+        notify('Please enter your name', {
+          type: 'error',
+        });
+        return;
+      }
+
+      // Validate mobile (optional but if provided, must be valid)
       if (
         contactForm.mobile &&
         !/^\+?\d{7,15}$/.test(String(contactForm.mobile))
       ) {
-        notify('Enter a valid mobile', { type: 'error' });
+        notify('Please enter a valid mobile number', {
+          type: 'error',
+        });
         return;
       }
+
+      // Validate message
       if (!contactForm.message.trim()) {
-        notify('Please enter your message', { type: 'error' });
+        notify('Please enter your message', {
+          type: 'error',
+        });
+        return;
+      }
+
+      // Validate message length
+      if (contactForm.message.trim().length < 10) {
+        notify('Message must be at least 10 characters long', {
+          type: 'error',
+        });
         return;
       }
 
       setIsSubmitting(true);
 
+      console.log('📧 Contact form submission started:', {
+        category: contactForm.category,
+        name: contactForm.name,
+        mobile: contactForm.mobile,
+        messageLength: contactForm.message.length,
+        hasOnSave: !!onSave,
+      });
+
       try {
+        // First save to database
         if (onSave) {
-          await onSave({ type: 'contact_admin', payload: contactForm });
-        } else {
-          console.warn('onSave function not provided to Modal component');
-          onClose();
+          console.log('📧 Calling onSave function...');
+          await onSave(contactForm, 'contact_admin');
+          console.log('📧 onSave function completed successfully');
         }
+
+        // Generate WhatsApp URL
+        const adminNumber = '+917060813814'; // Admin WhatsApp number
+        const formattedMessage = `🕌 *New Contact Message from Masjid Dashboard*
+
+📋 *Category:* ${contactForm.category}
+👤 *Name:* ${contactForm.name}
+📱 *Mobile:* ${contactForm.mobile || 'Not provided'}
+💬 *Message:* ${contactForm.message}
+
+⏰ *Time:* ${new Date().toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+
+---
+*Sent from Masjid Dashboard System*`;
+
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${adminNumber}&text=${encodeURIComponent(formattedMessage)}`;
+
+        console.log('📱 Generated WhatsApp URL:', whatsappUrl);
+
+        // Show success message
+        notify('Message saved! Opening WhatsApp...', {
+          type: 'success',
+        });
+
+        // Open WhatsApp in new tab
+        setTimeout(() => {
+          window.open(whatsappUrl, '_blank');
+          onClose(); // Close modal after opening WhatsApp
+        }, 1000);
       } catch (error) {
-        console.error('Contact form submission error:', error);
-        // Error handling is done in App.js
+        console.error('❌ Contact form submission error:', error);
+        notify('Failed to send message. Please try again.', {
+          type: 'error',
+        });
       } finally {
         setIsSubmitting(false);
-      }
-    };
-
-    const getCategoryIcon = (category) => {
-      switch (category) {
-        case 'Jamaat':
-          return '🕌';
-        case 'Taqaza':
-          return '📢';
-        case 'Suggestions':
-          return '💡';
-        case 'Facing Issues':
-          return '⚠️';
-        case 'General':
-          return '📝';
-        default:
-          return '📧';
+        console.log('📧 Contact form submission finished');
       }
     };
 
     return (
-      <div className='modal-backdrop'>
-        <div className='modal contact-admin-modal' style={{ maxWidth: 480 }}>
+      <div className='modal-backdrop contact-admin-modal-backdrop'>
+        <div className='modal contact-admin-modal'>
           <div className='modal-header'>
-            <div className='header-content'>
-              <h3>📞 Contact Admin</h3>
-              <p className='modal-subtitle'>Get in touch with the admin team</p>
-            </div>
+            <h3>📧 Contact Admin</h3>
             <button
               className='modal-close-btn'
               onClick={onClose}
@@ -925,387 +1734,343 @@ const Modal = ({
             </button>
           </div>
 
-          <div className='contact-form-compact'>
-            <div className='form-grid-compact'>
-              {/* Category and Name in one row */}
-              <div className='form-row-compact'>
-                <div className='form-section-compact category-section-compact'>
-                  <label className='form-label-compact'>
-                    <span className='label-icon-compact'>🎯</span>
-                    Purpose
-                  </label>
-                  <select
-                    name='category'
-                    value={contactForm.category}
-                    onChange={onChange}
-                    className='contact-select-compact'
-                  >
-                    <option value='Jamaat'>🕌 Jamaat</option>
-                    <option value='Taqaza'>📢 Taqaza</option>
-                    <option value='Suggestions'>💡 Suggestions</option>
-                    <option value='Facing Issues'>⚠️ Facing Issues</option>
-                    <option value='General'>📝 General</option>
-                  </select>
-                </div>
-                <div className='form-section-compact'>
-                  <label className='form-label-compact'>
-                    <span className='label-icon-compact'>👤</span>
-                    Name *
-                  </label>
-                  <input
-                    name='name'
-                    value={contactForm.name}
-                    onChange={onChange}
-                    placeholder='Your full name'
-                    className='contact-input-compact'
-                  />
-                </div>
+          {/* Contact List Button */}
+          <div
+            style={{
+              background: 'linear-gradient(to right, #f0fdf4, #eff6ff)',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  background: '#22c55e',
+                  color: 'white',
+                  padding: '8px',
+                  borderRadius: '8px',
+                }}
+              >
+                📋
               </div>
+              <div style={{ flex: 1 }}>
+                <h4
+                  style={{
+                    fontWeight: '600',
+                    color: '#166534',
+                    margin: '0 0 4px 0',
+                  }}
+                >
+                  Contact List
+                </h4>
+                <p
+                  style={{
+                    fontSize: '14px',
+                    color: '#15803d',
+                    margin: '0 0 8px 0',
+                  }}
+                >
+                  View all contacts and their details
+                </p>
+                <button
+                  type='button'
+                  onClick={() => {
+                    // Close current modal and trigger contact list modal
+                    onClose();
+                    // Use a custom event to trigger contact list modal
+                    const event = new CustomEvent('openContactListModal');
+                    window.dispatchEvent(event);
+                  }}
+                  style={{
+                    background: '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = '#16a34a';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = '#22c55e';
+                  }}
+                >
+                  📋 View Contact List
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {/* Mobile field */}
-              <div className='form-section-compact'>
-                <label className='form-label-compact'>
-                  <span className='label-icon-compact'>📱</span>
-                  Mobile (Optional)
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+          >
+            {/* Category Selection */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '12px',
+                }}
+              >
+                📋 Select Category *
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                  gap: '12px',
+                }}
+              >
+                {[
+                  { value: 'Jamaat', label: 'Jamaat', icon: '🕌' },
+                  { value: 'Taqaza', label: 'Taqaza', icon: '📢' },
+                  { value: 'Suggestions', label: 'Suggestions', icon: '💡' },
+                  {
+                    value: 'Facing Issues',
+                    label: 'Facing Issues',
+                    icon: '⚠️',
+                  },
+                  { value: 'General', label: 'General', icon: '📝' },
+                ].map((cat) => (
+                  <button
+                    key={cat.value}
+                    type='button'
+                    onClick={() =>
+                      onChange({
+                        target: { name: 'category', value: cat.value },
+                      })
+                    }
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      padding: '16px 12px',
+                      minHeight: '80px',
+                      border:
+                        contactForm.category === cat.value
+                          ? '2px solid #3b82f6'
+                          : '2px solid #e5e7eb',
+                      borderRadius: '12px',
+                      background:
+                        contactForm.category === cat.value
+                          ? '#3b82f6'
+                          : 'white',
+                      color:
+                        contactForm.category === cat.value
+                          ? 'white'
+                          : '#374151',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    }}
+                  >
+                    <span style={{ fontSize: '20px', marginBottom: '6px' }}>
+                      {cat.icon}
+                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: '600' }}>
+                      {cat.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Name and Mobile Row */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px',
+              }}
+            >
+              {/* Name */}
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '6px',
+                  }}
+                >
+                  👤 Your Name *
                 </label>
                 <input
+                  type='text'
+                  name='name'
+                  value={contactForm.name}
+                  onChange={onChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                  placeholder='Enter your full name'
+                  maxLength={100}
+                />
+              </div>
+
+              {/* Mobile */}
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '6px',
+                  }}
+                >
+                  📱 Mobile Number (Optional)
+                </label>
+                <input
+                  type='tel'
                   name='mobile'
                   value={contactForm.mobile}
                   onChange={onChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
                   placeholder='+91 98765 43210'
-                  className='contact-input-compact'
+                  maxLength={20}
                 />
-              </div>
-
-              {/* Message field */}
-              <div className='form-section-compact'>
-                <div className='message-header-compact'>
-                  <label className='form-label-compact'>
-                    <span className='label-icon-compact'>💬</span>
-                    Message *
-                  </label>
-                  <span className='message-counter-compact'>
-                    {contactForm.message.length}/500
-                  </span>
-                </div>
-                <textarea
-                  name='message'
-                  rows={3}
-                  value={contactForm.message}
-                  onChange={onChange}
-                  placeholder={`Describe your ${contactForm.category.toLowerCase()} in detail...`}
-                  className='contact-textarea-compact'
-                  maxLength={500}
-                />
+                <p
+                  style={{
+                    fontSize: '11px',
+                    color: '#6b7280',
+                    marginTop: '6px',
+                    marginBottom: 0,
+                  }}
+                >
+                  Admin will contact you on this number if needed
+                </p>
               </div>
             </div>
 
-            {/* Compact summary */}
-            <div className='contact-summary-compact'>
-              <div className='summary-header-compact'>
-                <span className='summary-icon-compact'>
-                  {getCategoryIcon(contactForm.category)}
-                </span>
-                <div className='summary-content-compact'>
-                  <span className='summary-title-compact'>
-                    {contactForm.category}
-                  </span>
-                  <p className='summary-text-compact'>
-                    {contactForm.category === 'Suggestions' &&
-                      'Share your ideas to improve our services'}
-                    {contactForm.category === 'Facing Issues' &&
-                      "Report any problems you're experiencing"}
-                    {contactForm.category === 'Jamaat' &&
-                      'Contact regarding jamaat activities and events'}
-                    {contactForm.category === 'Taqaza' &&
-                      'Submit taqaza or special requests'}
-                    {contactForm.category === 'General' &&
-                      'General inquiries and information'}
+            {/* Message */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px',
+                }}
+              >
+                💬 Your Message *
+              </label>
+              <textarea
+                name='message'
+                value={contactForm.message}
+                onChange={onChange}
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  resize: 'none',
+                  boxSizing: 'border-box',
+                }}
+                placeholder='Describe your inquiry or message in detail...'
+                maxLength={1000}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '8px',
+                }}
+              >
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <div
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      background: '#22c55e',
+                      borderRadius: '50%',
+                    }}
+                  ></div>
+                  <p style={{ fontSize: '11px', color: '#6b7280', margin: 0 }}>
+                    {contactForm.message.length}/1000 characters
                   </p>
                 </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: '#16a34a',
+                  }}
+                >
+                  📱 <span>Will be sent to admin on WhatsApp</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className='modal-actions-compact'>
-            <button
-              type='button'
-              className='btn-secondary-compact'
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type='button'
-              className='btn-primary-compact'
-              onClick={handleSend}
-              disabled={isSubmitting || loading}
-            >
-              {isSubmitting ? '📤 Sending...' : '📤 Send Message'}
-            </button>
-          </div>
+            {/* Submit Buttons */}
+            <div className='actions'>
+              <button type='submit' disabled={isSubmitting} className='primary'>
+                {isSubmitting ? 'Sending...' : '📱 Send Message'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );
   }
 
   if (type === 'notify_prefs') {
-    const onToggle = (k) => setLocalPrefs((p) => ({ ...p, [k]: !p[k] }));
-    const onToggleAll = () =>
-      setLocalPrefs((p) => {
-        const next = !p.all;
-        return {
-          ...p,
-          all: next,
-          prayer: next,
-          jamaat: next,
-          info: next,
-          clear: next,
-          prayerFajr: next,
-          prayerDhuhr: next,
-          prayerAsr: next,
-          prayerMaghrib: next,
-          prayerIsha: next,
-        };
-      });
-    const handleSavePrefs = () => {
-      if (onSave) {
-        onSave({ type: 'notify_prefs', prefs: localPrefs });
-      } else {
-        console.warn('onSave function not provided to Modal component');
-        onClose();
-      }
-    };
-
-    // Check if current user is guest
-    const isGuest = data?.user?.isGuest || data?.user?.role === 'guest';
     return (
-      <div className='modal-backdrop'>
-        <div className='modal' style={{ maxWidth: 520 }}>
-          <h3 style={{ marginBottom: 6 }}>
-            Notification Preferences
-            {isGuest && (
-              <span
-                style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  fontWeight: 'normal',
-                }}
-              >
-                {' '}
-                (Guest Mode)
-              </span>
-            )}
-          </h3>
-          {isGuest && (
-            <div
-              style={{
-                background: '#fff3cd',
-                border: '1px solid #ffeaa7',
-                borderRadius: '6px',
-                padding: '8px 12px',
-                marginBottom: '12px',
-                fontSize: '13px',
-                color: '#856404',
-              }}
-            >
-              <strong>ℹ️ Guest User:</strong> You can customize basic
-              notifications. Some admin features are limited.
-            </div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type='checkbox'
-                checked={!!localPrefs.all}
-                onChange={onToggleAll}
-              />
-              <strong>Select All</strong>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type='checkbox'
-                checked={!!localPrefs.prayer}
-                onChange={() => onToggle('prayer')}
-              />
-              Prayer time alerts
-            </label>
-            {localPrefs.prayer && (
-              <div
-                style={{
-                  paddingLeft: 22,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(120px,1fr))',
-                  gap: 8,
-                }}
-              >
-                <label>
-                  <input
-                    type='checkbox'
-                    checked={!!localPrefs.prayerFajr}
-                    onChange={() => onToggle('prayerFajr')}
-                  />{' '}
-                  Fajr
-                </label>
-                <label>
-                  <input
-                    type='checkbox'
-                    checked={!!localPrefs.prayerDhuhr}
-                    onChange={() => onToggle('prayerDhuhr')}
-                  />{' '}
-                  Dhuhr/Juma
-                </label>
-                <label>
-                  <input
-                    type='checkbox'
-                    checked={!!localPrefs.prayerAsr}
-                    onChange={() => onToggle('prayerAsr')}
-                  />{' '}
-                  Asr
-                </label>
-                <label>
-                  <input
-                    type='checkbox'
-                    checked={!!localPrefs.prayerMaghrib}
-                    onChange={() => onToggle('prayerMaghrib')}
-                  />{' '}
-                  Maghrib
-                </label>
-                <label>
-                  <input
-                    type='checkbox'
-                    checked={!!localPrefs.prayerIsha}
-                    onChange={() => onToggle('prayerIsha')}
-                  />{' '}
-                  Isha
-                </label>
-              </div>
-            )}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type='checkbox'
-                checked={!!localPrefs.jamaat}
-                onChange={() => onToggle('jamaat')}
-              />
-              Jamaat updates
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type='checkbox'
-                checked={!!localPrefs.info}
-                onChange={() => onToggle('info')}
-              />
-              Info changes (Aumoor/Resources)
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type='checkbox'
-                checked={!!localPrefs.clear}
-                onChange={() => onToggle('clear')}
-              />
-              Admin “Clear All” notice
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type='checkbox'
-                checked={!!localPrefs.admin}
-                onChange={() => onToggle('admin')}
-              />
-              Admin mode reminders
-            </label>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginTop: 6,
-              }}
-            >
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  type='checkbox'
-                  checked={!!localPrefs.quietEnabled}
-                  onChange={() => onToggle('quietEnabled')}
-                />
-                Quiet hours
-              </label>
-              <input
-                type='time'
-                value={localPrefs.quietStart || '22:00'}
-                onChange={(e) =>
-                  setLocalPrefs((p) => ({ ...p, quietStart: e.target.value }))
-                }
-              />
-              <span>to</span>
-              <input
-                type='time'
-                value={localPrefs.quietEnd || '06:00'}
-                onChange={(e) =>
-                  setLocalPrefs((p) => ({ ...p, quietEnd: e.target.value }))
-                }
-              />
-            </div>
-          </div>
-          <div
-            className='actions'
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type='button'
-                className='ghost'
-                onClick={() => {
-                  // simple test for info notification respecting quiet hours
-                  if (
-                    navigator.serviceWorker &&
-                    navigator.serviceWorker.controller
-                  ) {
-                    navigator.serviceWorker.controller.postMessage({
-                      type: 'showNow',
-                      title: 'Test Notification',
-                      body: 'This is a preview.',
-                      prefs: localPrefs,
-                    });
-                  }
-                }}
-              >
-                Test
-              </button>
-              <button
-                type='button'
-                className='ghost'
-                onClick={() => {
-                  // test scheduling in ~10s for current prayer (for quick check)
-                  if (
-                    navigator.serviceWorker &&
-                    navigator.serviceWorker.controller
-                  ) {
-                    const now = new Date();
-                    now.setSeconds(now.getSeconds() + 10);
-                    const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                    navigator.serviceWorker.controller.postMessage({
-                      type: 'schedule',
-                      times: [{ name: 'Test', time: hm }],
-                      prefs: localPrefs,
-                    });
-                  }
-                }}
-              >
-                Test schedule 10s
-              </button>
-            </div>
-            <button type='button' className='ghost' onClick={onClose}>
-              Cancel
-            </button>
-            <button type='button' onClick={handleSavePrefs}>
-              Save
-            </button>
-          </div>
+      <div className='modal-backdrop notification-prefs-modal-backdrop'>
+        <div className='modal notification-prefs-modal'>
+          <AdvancedNotificationSettings
+            user={data?.user}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'notification_tester') {
+    return (
+      <div className='modal-backdrop notification-tester-modal-backdrop'>
+        <div className='modal notification-tester-modal'>
+          <NotificationTester user={data?.user} onClose={onClose} />
         </div>
       </div>
     );
@@ -1313,8 +2078,8 @@ const Modal = ({
 
   if (type === 'backup_restore') {
     return (
-      <div className='modal-backdrop'>
-        <div className='modal' style={{ maxWidth: 600 }}>
+      <div className='modal-backdrop backup-modal-backdrop'>
+        <div className='modal backup-modal'>
           <div className='modal-header'>
             <h3>💾 Data Backup & Restore</h3>
             <button
@@ -1338,8 +2103,8 @@ const Modal = ({
 
   if (type === 'user_profile') {
     return (
-      <div className='modal-backdrop'>
-        <div className='modal' style={{ maxWidth: 600 }}>
+      <div className='modal-backdrop profile-modal-backdrop'>
+        <div className='modal profile-modal'>
           <div className='modal-header'>
             <h3>User Profile</h3>
             <button
@@ -1355,6 +2120,16 @@ const Modal = ({
             onUpdatePreferences={onSave}
             onLogout={onLogout || onClose}
           />
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'admin_dashboard') {
+    return (
+      <div className='modal-backdrop admin-dashboard-modal-backdrop'>
+        <div className='modal admin-dashboard-modal'>
+          <AdminDashboard onClose={onClose} />
         </div>
       </div>
     );

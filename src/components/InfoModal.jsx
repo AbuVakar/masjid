@@ -8,20 +8,20 @@ import {
   FaPray,
   FaCalendarAlt,
   FaBell,
-  FaImages,
-  FaEllipsisH,
   FaBullhorn,
 } from 'react-icons/fa';
+import { useNotify } from '../context/NotificationContext';
+import { useUser } from '../context/UserContext';
+import { apiService } from '../services/api';
 
 // Sample data for the info modal
-const getInfoData = (dataType) => {
-  // Load persisted edits if available
-  let persisted = {};
-  try {
-    persisted = JSON.parse(localStorage.getItem('infoData_v1') || '{}');
-  } catch (e) {}
+const getInfoData = (dataType, apiData = null) => {
+  // Use API data if available, otherwise use base dataset
+  if (apiData) {
+    return apiData;
+  }
 
-  // Base dataset
+  // Base dataset (fallback)
   const base = {
     timetable: {
       title: 'Prayer Timetable',
@@ -34,7 +34,7 @@ const getInfoData = (dataType) => {
       ],
     },
     imam: {
-      title: 'Imam Contact',
+      title: 'Imam Information',
       items: [{ name: 'Imam Sahab', mobile: '+91-9876500000' }],
     },
     aumoor: {
@@ -86,20 +86,28 @@ const getInfoData = (dataType) => {
             { name: '4 Months', note: 'As per capacity' },
           ],
         },
+        {
+          title: 'Aumoor',
+          items: [
+            { name: 'Aumoomi Ghast', note: 'Every Monday after Maghrib' },
+            { name: 'Taleem & Mashwara', note: 'Everyday after Isha' },
+            {
+              name: 'Haftwari Mashwara',
+              note: "Every Jumu'ah after Jumu'ah at Jama Masjid Badarkha",
+            },
+            {
+              name: 'Shab-guzari',
+              note: 'Every Saturday — Garh Tehsil Masjid after Asr',
+            },
+          ],
+        },
       ],
     },
     outgoing: {
       title: 'Outgoing Jamaat',
       items: [{ name: '3 days', note: "14th'August'2025 -7 AM" }],
     },
-    contact: {
-      title: 'Contact Us',
-      items: [
-        { name: 'M/s Ji Mursaleen Sahab', mobile: '+91-9639874789' },
-        { name: 'Haroon Bhai', mobile: '+91-9568094910' },
-        { name: 'Imaam Sahab', mobile: '+91-9760253216' },
-      ],
-    },
+
     resources_imp: {
       title: 'Important Islamic Resources',
       items: [
@@ -124,43 +132,115 @@ const getInfoData = (dataType) => {
     },
   };
 
-  // Apply persisted overrides
-  if (dataType && persisted[dataType]) {
-    const p = persisted[dataType];
-    if (p.items)
-      return { title: base[dataType]?.title || 'Information', items: p.items };
-    if (p.sections)
-      return {
-        title: base[dataType]?.title || 'Information',
-        sections: p.sections,
-      };
-  }
-
   return base[dataType];
 };
 
 const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
+  console.log('🚀 InfoModal Component Mounted - props:', {
+    data,
+    onClose: !!onClose,
+    onSave: !!onSave,
+    readOnly,
+  });
+
+  // Normalize legacy keys used by mobile header
+  const normalizedType = data === 'jamaat_activities' ? 'running' : data;
+  console.log('🚀 InfoModal - normalizedType:', normalizedType);
   const [isEditing, setIsEditing] = useState(false);
   const [editableItems, setEditableItems] = useState([]);
-  const infoData = useMemo(
-    () => getInfoData(data) || { title: 'Information' },
-    [data],
-  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [apiData, setApiData] = useState(null);
+  const [, setLoading] = useState(true);
+
+  const infoData = useMemo(() => {
+    console.log(
+      '🔄 InfoData useMemo - data:',
+      normalizedType,
+      'apiData:',
+      apiData,
+    );
+
+    // Use API data if available, otherwise fallback to base data
+    let result;
+    if (apiData && apiData.sections) {
+      result = apiData;
+    } else if (apiData && apiData.items) {
+      result = apiData;
+    } else {
+      // Use fallback data
+      result = getInfoData(normalizedType, null);
+    }
+
+    if (!result) {
+      result = { title: 'Information', sections: [] };
+    }
+
+    console.log('🔄 Final infoData:', result);
+    console.log('🔄 Final infoData.sections:', result?.sections);
+    console.log('🔄 Is sections array?', Array.isArray(result?.sections));
+    return result;
+  }, [normalizedType, apiData]);
+
+  // Get user context for admin check
+  const { notify } = useNotify();
+  const { isAdmin: userIsAdmin, user } = useUser();
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        console.log('🔄 Fetching API data for type:', normalizedType);
+        const response = await apiService.getInfoDataByType(normalizedType);
+        if (response.success) {
+          console.log(
+            '📡 API Response for',
+            normalizedType,
+            ':',
+            response.data,
+          );
+          setApiData(response.data);
+        }
+      } catch (error) {
+        console.log(
+          '❌ No API data found for',
+          normalizedType,
+          ', using fallback data. Error:',
+          error.message,
+        );
+        setApiData(null);
+      } finally {
+        setLoading(false);
+        console.log(
+          '🔄 API fetch completed for type:',
+          normalizedType,
+          'apiData:',
+          apiData,
+        );
+      }
+    };
+
+    if (normalizedType) {
+      fetchData();
+    }
+  }, [normalizedType]);
+
   const isEditable = [
     'aumoor',
     'running',
     'outgoing',
-    'contact',
+
     'resources_imp',
     'resources_dawah',
     'resources_gallery',
     'resources_misc',
-  ].includes(data);
-  const canEdit = isEditable && !readOnly;
+  ].includes(normalizedType);
+  const canEdit = isEditable && !readOnly && userIsAdmin;
 
   console.log(
     '🔍 InfoModal - data:',
-    data,
+    normalizedType,
     'isEditable:',
     isEditable,
     'readOnly:',
@@ -169,84 +249,189 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
     canEdit,
     'onSave:',
     !!onSave,
+    'isEditing:',
+    isEditing,
+    'Edit status:',
+    canEdit ? '✅ ADMIN CAN EDIT' : '❌ READ-ONLY',
+    'User context:',
+    { isAdmin: userIsAdmin, user: user },
   );
 
   // Initialize editable items when data changes
   useEffect(() => {
+    console.log('📊 InfoModal - Data loading effect START:', {
+      type: normalizedType,
+      hasInfoData: !!infoData,
+      hasSections: Array.isArray(infoData?.sections),
+      hasItems: Array.isArray(infoData?.items),
+      sectionsCount: infoData?.sections?.length || 0,
+      itemsCount: infoData?.items?.length || 0,
+      items: infoData?.items?.slice(0, 2), // Log first 2 items
+    });
+
+    // Handle different data structures based on type
     if (Array.isArray(infoData?.sections)) {
+      // Handle sections data (like Jama'at Activities)
       const sanitized = infoData.sections.map((sec) => ({
         title: sec && typeof sec.title === 'string' ? sec.title : '',
         items: Array.isArray(sec?.items) ? [...sec.items] : [],
       }));
       setEditableItems(sanitized);
     } else if (Array.isArray(infoData?.items)) {
+      // Handle simple items data
       setEditableItems([...infoData.items]);
     } else {
       setEditableItems([]);
     }
-  }, [infoData]);
+  }, [infoData, normalizedType]);
 
   const handleEdit = () => {
-    console.log('🔧 Edit button clicked - canEdit:', canEdit, 'data:', data);
-    if (!canEdit) return;
+    console.log(
+      '🔧 Edit button clicked - canEdit:',
+      canEdit,
+      'data:',
+      normalizedType,
+    );
+    console.log('🔧 isEditing before:', isEditing);
+    if (!canEdit) {
+      console.log('❌ Cannot edit - canEdit is false');
+      return;
+    }
     setIsEditing(true);
-    console.log('✅ Edit mode enabled');
+    console.log('✅ Edit mode enabled - isEditing set to true');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log(
       '💾 Save button clicked - data:',
-      data,
+      normalizedType,
       'editableItems:',
       editableItems,
     );
-    setIsEditing(false);
-    if (onSave) {
-      // Build payload strictly matching type shape
-      const payload = { type: data };
+
+    // Reset error state
+    setSaveError(null);
+    setIsSaving(true);
+
+    try {
+      // Validate data before saving
       if (Array.isArray(infoData?.sections)) {
-        payload.sections = editableItems.map((sec) => ({
-          title: sec.title || '',
-          items: Array.isArray(sec.items)
-            ? sec.items.map((it) => ({
-                name: it.name || '',
-                note: it.note || '',
-              }))
-            : [],
-        }));
-      } else {
-        payload.items = (Array.isArray(editableItems) ? editableItems : []).map(
-          (it) =>
-            data === 'contact'
-              ? { name: it.name || '', mobile: it.mobile || '' }
-              : { name: it.name || '', note: it.note || '' },
-        );
-      }
-      console.log('📤 Sending payload to onSave:', payload);
-      onSave(payload, data);
-      try {
-        if (
-          'serviceWorker' in navigator &&
-          navigator.serviceWorker.controller
-        ) {
-          const tag = data === 'running' ? 'jamaat-changed' : 'info-updated';
-          navigator.serviceWorker.controller.postMessage({
-            type: 'showNow',
-            title: 'Info Updated',
-            body: `${infoData?.title || 'Information'} updated`,
-            tag,
-          });
+        // Validate sections (Jama'at Activities)
+        for (let i = 0; i < editableItems.length; i++) {
+          const section = editableItems[i];
+          if (!section.title || section.title.trim() === '') {
+            throw new Error(`Please fill in section ${i + 1} title`);
+          }
+          if (Array.isArray(section.items)) {
+            for (let j = 0; j < section.items.length; j++) {
+              const item = section.items[j];
+              if (!item.name || item.name.trim() === '') {
+                throw new Error(
+                  `Please fill in item name in section "${section.title}"`,
+                );
+              }
+            }
+          }
         }
-      } catch {}
+      } else if (Array.isArray(editableItems) && editableItems.length > 0) {
+        // Validate items (Aumoor, etc.)
+        const hasEmptyNames = editableItems.some(
+          (item) => !item.name || item.name.trim() === '',
+        );
+        if (hasEmptyNames) {
+          throw new Error('Please fill in all activity names');
+        }
+      }
+
+      if (onSave) {
+        // Build payload strictly matching type shape
+        const payload = { type: normalizedType };
+        if (Array.isArray(infoData?.sections)) {
+          payload.sections = editableItems.map((sec) => ({
+            title: sec.title || '',
+            items: Array.isArray(sec.items)
+              ? sec.items.map((it) => ({
+                  name: it.name || '',
+                  note: it.note || '',
+                }))
+              : [],
+          }));
+        } else {
+          // Default mapping for other forms
+          payload.items = (
+            Array.isArray(editableItems) ? editableItems : []
+          ).map((it) => ({ name: it.name || '', note: it.note || '' }));
+        }
+
+        console.log('📤 Sending payload to onSave:', payload);
+
+        // Save to API
+        const saveData = {
+          type: payload.type,
+          title: infoData.title,
+          items: payload.items,
+          sections: payload.sections,
+        };
+
+        const response = await apiService.createOrUpdateInfoData(saveData);
+
+        if (response.success) {
+          // Update local state with new data
+          setApiData(response.data);
+
+          // Force re-render by updating state
+          setEditableItems([...editableItems]);
+
+          // Show success message using notification system
+          notify('✅ Information updated successfully!', { type: 'success' });
+        } else {
+          throw new Error('Failed to save data to server');
+        }
+
+        // Service worker notification
+        try {
+          if (
+            'serviceWorker' in navigator &&
+            navigator.serviceWorker.controller
+          ) {
+            const tag =
+              normalizedType === 'running' ? 'jamaat-changed' : 'info-updated';
+            navigator.serviceWorker.controller.postMessage({
+              type: 'showNow',
+              title: '✅ Information Updated Successfully!',
+              body: `${infoData?.title || 'Information'} has been updated and saved.`,
+              tag,
+            });
+          }
+        } catch (error) {
+          console.error('Service worker notification error:', error);
+        }
+
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error('❌ Save operation failed:', error);
+      setSaveError(
+        error.message || 'Failed to save information. Please try again.',
+      );
+
+      // Show error message using notification system
+      notify(`❌ ${error.message || 'Failed to save information'}`, {
+        type: 'error',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset to original data (both items and sections)
+    // Reset to original data based on type
     if (infoData?.sections) {
+      // Handle sections data (like Jama'at Activities)
       setEditableItems([...infoData.sections]);
     } else if (infoData?.items) {
+      // Handle simple items data
       setEditableItems([...infoData.items]);
     } else {
       setEditableItems([]);
@@ -281,12 +466,8 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
       newSections[sectionIndex] = section;
       setEditableItems(newSections);
     } else {
-      // Add to root items - use appropriate default structure based on data type
-      if (data === 'contact') {
-        setEditableItems([...editableItems, { name: '', mobile: '' }]);
-      } else {
-        setEditableItems([...editableItems, { name: '', note: '' }]);
-      }
+      // Add to root items
+      setEditableItems([...editableItems, { name: '', note: '' }]);
     }
   };
 
@@ -317,33 +498,45 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
     return safeItems.map((item, index) => (
       <div key={index} className='info-item'>
         {isEditing ? (
-          <div className='editable-item'>
+          <div
+            className='editable-item'
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              padding: '12px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              backgroundColor: '#f9fafb',
+            }}
+          >
             <input
               type='text'
-              value={item.name}
+              value={item.name || ''}
               onChange={(e) =>
                 handleItemChange(index, 'name', e.target.value, sectionIndex)
               }
               placeholder='Name'
-              className='edit-input'
+              className='aumoor-edit-input'
+              style={{ marginBottom: '8px' }}
             />
             <input
-              type={data === 'contact' ? 'tel' : 'text'}
-              value={item.mobile ?? item.note ?? ''}
+              type='text'
+              value={item.note ?? ''}
               onChange={(e) => {
-                const field = data === 'contact' ? 'mobile' : 'note';
-                handleItemChange(index, field, e.target.value, sectionIndex);
+                handleItemChange(index, 'note', e.target.value, sectionIndex);
               }}
-              placeholder={data === 'contact' ? 'Mobile Number' : 'Description'}
-              className='edit-input'
+              placeholder='Description'
+              className='aumoor-edit-input'
             />
             <button
               onClick={() => handleRemoveItem(index, sectionIndex)}
-              className='remove-btn'
+              className='aumoor-remove-btn'
               title='Remove item'
               aria-label='Remove item'
+              style={{ marginTop: '8px' }}
             >
-              ×
+              <span className='remove-icon'>🗑️</span>
             </button>
           </div>
         ) : (
@@ -394,12 +587,6 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
     return <FaUsers />;
   };
 
-  const getResourceIcon = (type) => {
-    if (type === 'resources_gallery') return <FaImages />;
-    if (type === 'resources_misc') return <FaEllipsisH />;
-    return <FaBookOpen />; // imp, dawah
-  };
-
   return (
     <div className='modal-backdrop'>
       <div className='modal'>
@@ -408,7 +595,7 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
             <h3 className='info-modal-title'>
               {infoData?.title || 'Information'}
             </h3>
-            {data === 'aumoor' && (
+            {normalizedType === 'aumoor' && (
               <span className='info-modal-subtitle'>
                 Manage daily activities and schedules
               </span>
@@ -431,9 +618,10 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                   onClick={handleSave}
                   className='info-save-btn'
                   title='Save changes'
+                  disabled={isSaving}
                 >
-                  <span className='save-icon'>💾</span>
-                  Save
+                  <span className='save-icon'>{isSaving ? '⏳' : '💾'}</span>
+                  {isSaving ? 'Saving...' : 'Save'}
                 </button>
                 <button
                   onClick={handleCancel}
@@ -454,61 +642,70 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
           </div>
         </div>
 
-        <div className='form-row' style={{ marginBottom: 6, gap: '16px' }}>
-          <div className='info-modal-status-bar'>
-            <span className='status-indicator'>
-              <span className='status-dot'></span>
-              {Array.isArray(infoData?.sections)
-                ? 'Sections View'
-                : 'Items View'}
-            </span>
-            <span className='status-separator'>•</span>
-            <span className='status-indicator'>
-              <span
-                className={`status-dot ${isEditing ? 'editing' : ''}`}
-              ></span>
-              {isEditing ? 'Editing Mode' : 'View Mode'}
-            </span>
-            {data === 'aumoor' && (
-              <>
-                <span className='status-separator'>•</span>
-                <span className='status-indicator'>
-                  <span className='status-dot info'></span>
-                  {editableItems.length} Activities
-                </span>
-              </>
-            )}
+        {/* Error Message Display */}
+        {saveError && (
+          <div
+            className='error-message'
+            style={{
+              margin: '10px 0',
+              padding: '12px 16px',
+              backgroundColor: '#fee2e2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#dc2626',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>⚠️</span>
+            <span>{saveError}</span>
+            <button
+              onClick={() => setSaveError(null)}
+              style={{
+                marginLeft: 'auto',
+                background: 'none',
+                border: 'none',
+                color: '#dc2626',
+                cursor: 'pointer',
+                fontSize: '16px',
+              }}
+            >
+              ✕
+            </button>
           </div>
+        )}
+
+        <div style={{ width: '100%' }}>
+          {(() => {
+            console.log(
+              '🎯 InfoModal Render - infoData?.sections:',
+              infoData?.sections,
+            );
+            console.log(
+              '🎯 InfoModal Render - Array.isArray(infoData?.sections):',
+              Array.isArray(infoData?.sections),
+            );
+            console.log('🎯 InfoModal Render - editableItems:', editableItems);
+            return null;
+          })()}
           {Array.isArray(infoData?.sections) ? (
             // Render sections for Jama'at Activities
-            <div style={{ width: '100%' }}>
+            <div className='jamaat-activities-container'>
               {(Array.isArray(editableItems) ? editableItems : []).map(
                 (section, sectionIndex) => (
                   <div
                     key={sectionIndex}
-                    className={isEditing ? '' : 'jamaat-section'}
-                    style={
-                      isEditing
-                        ? {
-                            marginBottom: '20px',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                          }
-                        : {}
+                    className={
+                      isEditing ? 'jamaat-edit-section' : 'jamaat-section'
                     }
                   >
                     <div
-                      className={isEditing ? '' : 'section-title-line'}
-                      style={
+                      className={
                         isEditing
-                          ? {
-                              background: '#eef8f0',
-                              padding: '8px 12px',
-                              color: '#083d24',
-                              fontWeight: 'bold',
-                            }
-                          : {}
+                          ? 'jamaat-edit-title-line'
+                          : 'section-title-line'
                       }
                     >
                       {isEditing ? (
@@ -523,13 +720,12 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                             };
                             setEditableItems(updatedSections);
                           }}
-                          style={{ width: '100%', padding: '4px 8px' }}
                         />
                       ) : (
                         <span>{section.title}</span>
                       )}
                     </div>
-                    <div style={{ padding: '8px' }}>
+                    <div style={{ padding: '16px' }}>
                       {isEditing ? (
                         renderItems(section.items, sectionIndex)
                       ) : (
@@ -558,21 +754,26 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                     {isEditing && (
                       <div
                         style={{
-                          padding: '8px',
-                          borderTop: '1px solid #f0f0f0',
+                          padding: '12px 16px',
+                          borderTop: '1px solid #e5e7eb',
                           display: 'flex',
                           justifyContent: 'space-between',
+                          background: 'rgba(0, 0, 0, 0.3)',
                         }}
                       >
                         <button
                           onClick={() => handleAddItem(sectionIndex)}
                           style={{
-                            background: '#4CAF50',
+                            background:
+                              'linear-gradient(135deg, #116530, #059669)',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
+                            borderRadius: '8px',
+                            padding: '8px 16px',
                             cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            boxShadow: '0 2px 4px rgba(17, 101, 48, 0.2)',
                           }}
                         >
                           + Add Item
@@ -580,12 +781,14 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                         <button
                           onClick={() => handleRemoveSection(sectionIndex)}
                           style={{
-                            background: '#ff4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
+                            background: 'rgba(255, 107, 107, 0.2)',
+                            color: '#ff6b6b',
+                            border: '1px solid rgba(255, 107, 107, 0.3)',
+                            borderRadius: '8px',
+                            padding: '8px 16px',
                             cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '600',
                           }}
                         >
                           Remove Section
@@ -596,7 +799,7 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                 ),
               )}
               {isEditing && (
-                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
                   <button
                     onClick={() => {
                       setEditableItems([
@@ -605,13 +808,15 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                       ]);
                     }}
                     style={{
-                      background: '#2196F3',
+                      background: 'linear-gradient(135deg, #116530, #059669)',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '4px',
-                      padding: '6px 12px',
+                      borderRadius: '12px',
+                      padding: '12px 24px',
                       cursor: 'pointer',
-                      fontSize: '0.9em',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      boxShadow: '0 4px 8px rgba(17, 101, 48, 0.2)',
                     }}
                   >
                     + Add New Section
@@ -620,9 +825,9 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
               )}
             </div>
           ) : (
-            // Render simple items list (for Aumoor, Outgoing, Contact, etc.)
+            // Render simple items list (for Aumoor, Outgoing, etc.)
             <div style={{ width: '100%' }}>
-              {!isEditing && data === 'aumoor' ? (
+              {!isEditing && normalizedType === 'aumoor' ? (
                 <div className='aumoor-container'>
                   <div className='aumoor-header'>
                     <div className='aumoor-info'>
@@ -661,7 +866,7 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                     </div>
                   )}
                 </div>
-              ) : isEditing && data === 'aumoor' ? (
+              ) : isEditing && normalizedType === 'aumoor' ? (
                 <div className='aumoor-edit-container'>
                   <div className='aumoor-edit-header-info'>
                     <div className='edit-info'>
@@ -680,11 +885,13 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                             <div className='aumoor-edit-icon'>
                               {getAumoorIcon(item?.name)}
                             </div>
+                            <div className='aumoor-edit-title'>
+                              Activity {index + 1}
+                            </div>
                             <button
-                              onClick={() => handleRemoveItem(index)}
                               className='aumoor-remove-btn'
-                              title='Remove activity'
-                              aria-label='Remove activity'
+                              onClick={() => handleRemoveItem(index)}
+                              title='Remove Activity'
                             >
                               <span className='remove-icon'>🗑️</span>
                             </button>
@@ -696,7 +903,8 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                               </label>
                               <input
                                 type='text'
-                                value={item.name || ''}
+                                className='aumoor-edit-input'
+                                value={item?.name || ''}
                                 onChange={(e) =>
                                   handleItemChange(
                                     index,
@@ -704,16 +912,16 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                                     e.target.value,
                                   )
                                 }
-                                placeholder='e.g., Daily Taleem, Weekly Mashwara'
-                                className='aumoor-edit-input'
+                                placeholder='Enter activity name...'
                               />
                             </div>
                             <div className='edit-field-group'>
                               <label className='edit-field-label'>
-                                Schedule/Description
+                                Description/Note
                               </label>
                               <textarea
-                                value={item.note || ''}
+                                className='aumoor-edit-textarea'
+                                value={item?.note || ''}
                                 onChange={(e) =>
                                   handleItemChange(
                                     index,
@@ -721,9 +929,7 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                                     e.target.value,
                                   )
                                 }
-                                placeholder='e.g., Every day after Isha prayer'
-                                className='aumoor-edit-textarea'
-                                rows={2}
+                                placeholder='Enter activity description or schedule...'
                               />
                             </div>
                           </div>
@@ -733,96 +939,52 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                   </div>
                   <div className='aumoor-add-section'>
                     <button
-                      onClick={() => {
-                        const newItems = [
+                      className='aumoor-add-btn'
+                      onClick={() =>
+                        setEditableItems([
                           ...editableItems,
                           { name: '', note: '' },
-                        ];
-                        setEditableItems(newItems);
-                      }}
-                      className='aumoor-add-btn'
+                        ])
+                      }
                     >
-                      <span className='add-icon'>➕</span>
+                      <span>➕</span>
                       <span>Add New Activity</span>
                     </button>
-                    <div className='add-hint'>
-                      Click to add a new activity to the schedule
-                    </div>
                   </div>
                 </div>
-              ) : !isEditing && data === 'contact' ? (
-                <div className='contact-grid'>
-                  {(Array.isArray(editableItems) ? editableItems : []).map(
-                    (item, index) => (
-                      <div key={index} className='contact-card'>
-                        <div className='contact-avatar'>
-                          <FaPhoneAlt size={14} />
-                        </div>
-                        <div className='contact-body'>
-                          <div className='contact-name'>
-                            {item?.name || '-'}
-                          </div>
-                          <div className='contact-mobile'>
-                            {item?.mobile ? (
-                              <a href={`tel:${item.mobile}`} title='Call'>
-                                {item.mobile}
-                              </a>
-                            ) : (
-                              '-'
-                            )}
-                          </div>
-                        </div>
-                        {item?.mobile && (
-                          <a
-                            className='contact-call'
-                            href={`tel:${item.mobile}`}
-                            title='Call'
-                          >
-                            Call
-                          </a>
-                        )}
-                      </div>
-                    ),
-                  )}
-                </div>
-              ) : !isEditing && String(data || '').startsWith('resources_') ? (
-                <div className='resource-grid'>
-                  {(Array.isArray(editableItems) ? editableItems : []).map(
-                    (item, index) => (
-                      <div key={index} className='resource-card'>
-                        <div className='resource-icon'>
-                          {getResourceIcon(data)}
-                        </div>
-                        <div className='resource-body'>
-                          <div className='resource-title'>
-                            {item?.name || '-'}
-                          </div>
-                          <div className='resource-note'>
-                            {item?.note || '-'}
-                          </div>
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
               ) : (
-                <table
-                  style={{ width: '100%', borderCollapse: 'collapse' }}
-                  role='table'
-                >
-                  <tbody>
-                    {(Array.isArray(editableItems) ? editableItems : []).map(
-                      (item, index) => (
-                        <tr
-                          key={index}
-                          style={{ borderBottom: '1px solid #f0f0f0' }}
-                          role='row'
-                        >
-                          <td style={{ padding: '8px', width: '30%' }}>
-                            {isEditing ? (
+                // Default rendering for other data types
+                <div style={{ width: '100%' }}>
+                  {isEditing ? (
+                    // Edit mode rendering
+                    <div style={{ width: '100%' }}>
+                      {(Array.isArray(editableItems) ? editableItems : []).map(
+                        (item, index) => (
+                          <div
+                            key={index}
+                            style={{
+                              padding: '16px',
+                              border: '2px solid #e5e7eb',
+                              borderRadius: '12px',
+                              marginBottom: '16px',
+                              background: '#ffffff',
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                            }}
+                          >
+                            <div style={{ marginBottom: '12px' }}>
+                              <label
+                                style={{
+                                  display: 'block',
+                                  fontWeight: '600',
+                                  marginBottom: '6px',
+                                  color: '#374151',
+                                }}
+                              >
+                                Resource Name
+                              </label>
                               <input
                                 type='text'
-                                value={item.name || ''}
+                                value={item?.name || ''}
                                 onChange={(e) =>
                                   handleItemChange(
                                     index,
@@ -830,109 +992,828 @@ const InfoModal = ({ data, onClose, onSave, readOnly = false }) => {
                                     e.target.value,
                                   )
                                 }
-                                placeholder='Name'
-                                style={{ width: '100%', padding: '4px 8px' }}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  backgroundColor: '#f9fafb',
+                                }}
+                                placeholder='Enter resource name...'
                               />
-                            ) : (
-                              <strong>{item.name}</strong>
-                            )}
-                          </td>
-                          <td style={{ padding: '8px' }}>
-                            {isEditing ? (
-                              <div
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label
                                 style={{
-                                  display: 'flex',
-                                  gap: '8px',
-                                  alignItems: 'center',
+                                  display: 'block',
+                                  fontWeight: '600',
+                                  marginBottom: '6px',
+                                  color: '#374151',
                                 }}
                               >
-                                <input
-                                  type={data === 'contact' ? 'tel' : 'text'}
-                                  value={item.mobile ?? item.note ?? ''}
-                                  onChange={(e) => {
-                                    const field =
-                                      data === 'contact' ? 'mobile' : 'note';
-                                    handleItemChange(
-                                      index,
-                                      field,
-                                      e.target.value,
-                                    );
-                                  }}
-                                  placeholder={
-                                    data === 'contact'
-                                      ? 'Mobile Number'
-                                      : 'Description'
-                                  }
-                                  style={{ flex: 1, padding: '4px 8px' }}
-                                />
-                                <button
-                                  type='button'
-                                  onClick={() => handleRemoveItem(index)}
-                                  style={{
-                                    background: '#ff4444',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    padding: '4px 8px',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            ) : (
-                              <div
+                                Description/Note
+                              </label>
+                              <textarea
+                                value={item?.note || ''}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    index,
+                                    'note',
+                                    e.target.value,
+                                  )
+                                }
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  backgroundColor: '#f9fafb',
+                                  minHeight: '80px',
+                                  resize: 'vertical',
                                 }}
+                                placeholder='Enter description or note...'
+                              />
+                            </div>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'flex-end',
+                                gap: '8px',
+                              }}
+                            >
+                              <button
+                                onClick={() => handleRemoveItem(index)}
+                                style={{
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  fontWeight: '500',
+                                }}
+                                title='Remove Resource'
                               >
-                                <span>{item.mobile ?? item.note ?? '-'}</span>
-                                {item.mobile && (
-                                  <a
-                                    href={`tel:${item.mobile}`}
-                                    style={{
-                                      marginLeft: '8px',
-                                      color: '#4CAF50',
-                                    }}
-                                    title='Call'
-                                  >
-                                    <FaPhoneAlt size={14} />
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                    {isEditing && (
-                      <tr>
-                        <td
-                          colSpan='2'
-                          style={{ textAlign: 'center', padding: '8px' }}
+                                🗑️ Remove
+                              </button>
+                            </div>
+                          </div>
+                        ),
+                      )}
+                      <div
+                        style={{
+                          textAlign: 'center',
+                          marginTop: '20px',
+                          padding: '16px',
+                          border: '2px dashed #d1d5db',
+                          borderRadius: '12px',
+                          backgroundColor: '#f9fafb',
+                        }}
+                      >
+                        <button
+                          onClick={() => handleAddItem()}
+                          style={{
+                            background: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '12px 20px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            margin: '0 auto',
+                          }}
                         >
-                          <button
-                            type='button'
-                            onClick={() => handleAddItem()}
+                          ➕ Add New Resource
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Read-only mode rendering
+                    <div style={{ width: '100%' }}>
+                      {(Array.isArray(editableItems) ? editableItems : []).map(
+                        (item, index) => (
+                          <div
+                            key={index}
                             style={{
-                              background: '#4CAF50',
-                              color: 'white',
-                              border: 'none',
-                              padding: '6px 12px',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '0.9em',
+                              padding: '16px',
+                              borderRadius: '12px',
+                              marginBottom: '12px',
+                              background: 'rgba(0, 0, 0, 0.4)',
+                              backdropFilter: 'blur(10px)',
+                              border: '1px solid rgba(0, 212, 255, 0.2)',
+                              transition: 'all 0.3s ease',
                             }}
                           >
-                            + Add New {data === 'contact' ? 'Contact' : 'Item'}
-                          </button>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                            <div
+                              style={{
+                                fontWeight: 'bold',
+                                marginBottom: '8px',
+                                color: '#00d4ff',
+                                fontSize: '16px',
+                              }}
+                            >
+                              {item?.name || '-'}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '14px',
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                lineHeight: '1.4',
+                              }}
+                            >
+                              {item?.note || '-'}
+                            </div>
+                          </div>
+                        ),
+                      )}
+                      {editableItems.length === 0 && (
+                        <div
+                          style={{
+                            textAlign: 'center',
+                            padding: '40px 20px',
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            fontSize: '16px',
+                          }}
+                        >
+                          📝 No resources added yet
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
+
+              {/* Premium CSS Styles for Aumoor */}
+              <style jsx>{`
+                .aumoor-container {
+                  background: rgba(0, 0, 0, 0.4);
+                  backdrop-filter: blur(25px);
+                  border: 2px solid rgba(0, 212, 255, 0.3);
+                  border-radius: 20px;
+                  padding: 20px;
+                  margin: 0;
+                }
+
+                .aumoor-header {
+                  background: linear-gradient(
+                    135deg,
+                    #00d4ff,
+                    #0099cc,
+                    #006699
+                  );
+                  border: 1px solid rgba(0, 212, 255, 0.4);
+                  border-radius: 12px;
+                  padding: 16px;
+                  margin-bottom: 20px;
+                  position: relative;
+                }
+
+                .aumoor-header::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: linear-gradient(
+                    135deg,
+                    rgba(0, 0, 0, 0.2) 0%,
+                    rgba(0, 0, 0, 0.1) 100%
+                  );
+                  border-radius: 12px;
+                }
+
+                .aumoor-info {
+                  position: relative;
+                  z-index: 1;
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                }
+
+                .aumoor-info-icon {
+                  font-size: 18px;
+                  color: #ffffff;
+                  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                }
+
+                .aumoor-info-text {
+                  font-size: 14px;
+                  color: #ffffff;
+                  font-style: italic;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                  opacity: 0.9;
+                }
+
+                .aumoor-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                  gap: 16px;
+                  margin-bottom: 20px;
+                }
+
+                .aumoor-card {
+                  background: rgba(0, 0, 0, 0.4);
+                  border: 1px solid rgba(0, 212, 255, 0.2);
+                  border-radius: 12px;
+                  padding: 16px;
+                  transition: all 0.3s ease;
+                  backdrop-filter: blur(10px);
+                }
+
+                .aumoor-card:hover {
+                  border-color: rgba(0, 212, 255, 0.4);
+                  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
+                  transform: translateY(-2px);
+                }
+
+                .aumoor-icon {
+                  width: 40px;
+                  height: 40px;
+                  border-radius: 10px;
+                  background: rgba(0, 212, 255, 0.2);
+                  color: #00d4ff;
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  flex: 0 0 40px;
+                  font-size: 16px;
+                  border: 1px solid rgba(0, 212, 255, 0.3);
+                  margin-bottom: 12px;
+                }
+
+                .aumoor-body {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                }
+
+                .aumoor-title {
+                  font-weight: 700;
+                  color: #00d4ff;
+                  font-size: 15px;
+                  line-height: 1.3;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .aumoor-note {
+                  color: rgba(255, 255, 255, 0.8);
+                  font-size: 13px;
+                  line-height: 1.4;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .aumoor-empty-state {
+                  text-align: center;
+                  padding: 40px 20px;
+                  background: rgba(0, 0, 0, 0.3);
+                  border: 2px dashed rgba(0, 212, 255, 0.3);
+                  border-radius: 12px;
+                  margin-top: 20px;
+                  backdrop-filter: blur(10px);
+                }
+
+                .empty-icon {
+                  font-size: 32px;
+                  margin-bottom: 12px;
+                  opacity: 0.6;
+                  color: #00d4ff;
+                }
+
+                .empty-text {
+                  font-size: 16px;
+                  font-weight: 600;
+                  color: #00d4ff;
+                  margin-bottom: 4px;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .empty-subtext {
+                  font-size: 13px;
+                  color: rgba(255, 255, 255, 0.7);
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                /* Edit Mode Styles */
+                .aumoor-edit-container {
+                  background: rgba(0, 0, 0, 0.4);
+                  backdrop-filter: blur(25px);
+                  border: 2px solid rgba(0, 212, 255, 0.3);
+                  border-radius: 20px;
+                  padding: 20px;
+                  margin: 0;
+                }
+
+                .aumoor-edit-header-info {
+                  background: linear-gradient(
+                    135deg,
+                    #00d4ff,
+                    #0099cc,
+                    #006699
+                  );
+                  border: 1px solid rgba(0, 212, 255, 0.4);
+                  border-radius: 12px;
+                  padding: 16px;
+                  margin-bottom: 20px;
+                  position: relative;
+                }
+
+                .aumoor-edit-header-info::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: linear-gradient(
+                    135deg,
+                    rgba(0, 0, 0, 0.2) 0%,
+                    rgba(0, 0, 0, 0.1) 100%
+                  );
+                  border-radius: 12px;
+                }
+
+                .edit-info {
+                  position: relative;
+                  z-index: 1;
+                  display: flex;
+                  align-items: center;
+                  gap: 12px;
+                }
+
+                .edit-info-icon {
+                  font-size: 18px;
+                  color: #ffffff;
+                  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                  animation: pulse 2s infinite;
+                }
+
+                .edit-info-text {
+                  font-size: 14px;
+                  color: #ffffff;
+                  font-weight: 500;
+                  line-height: 1.4;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .aumoor-edit-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                  gap: 20px;
+                  margin-bottom: 24px;
+                }
+
+                .aumoor-edit-card {
+                  background: rgba(0, 0, 0, 0.4);
+                  border: 2px solid rgba(0, 212, 255, 0.2);
+                  border-radius: 16px;
+                  padding: 20px;
+                  transition: all 0.3s ease;
+                  backdrop-filter: blur(10px);
+                  position: relative;
+                  overflow: hidden;
+                }
+
+                .aumoor-edit-card::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  height: 4px;
+                  background: linear-gradient(90deg, #00d4ff, #0099cc, #006699);
+                  opacity: 0;
+                  transition: opacity 0.3s ease;
+                }
+
+                .aumoor-edit-card:hover {
+                  border-color: rgba(0, 212, 255, 0.4);
+                  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
+                  transform: translateY(-2px);
+                }
+
+                .aumoor-edit-card:hover::before {
+                  opacity: 1;
+                }
+
+                .aumoor-edit-header {
+                  display: flex;
+                  align-items: center;
+                  gap: 12px;
+                  margin-bottom: 16px;
+                  padding-bottom: 12px;
+                  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+                }
+
+                .aumoor-edit-icon {
+                  width: 36px;
+                  height: 36px;
+                  border-radius: 8px;
+                  background: rgba(0, 212, 255, 0.2);
+                  color: #00d4ff;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 16px;
+                  border: 1px solid rgba(0, 212, 255, 0.3);
+                }
+
+                .aumoor-edit-title {
+                  font-weight: 700;
+                  color: #00d4ff;
+                  font-size: 16px;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .aumoor-remove-btn {
+                  margin-left: auto;
+                  background: rgba(255, 107, 107, 0.2);
+                  color: #ff6b6b;
+                  border: 1px solid rgba(255, 107, 107, 0.3);
+                  border-radius: 8px;
+                  padding: 8px 12px;
+                  cursor: pointer;
+                  transition: all 0.3s ease;
+                  backdrop-filter: blur(10px);
+                }
+
+                .aumoor-remove-btn:hover {
+                  background: rgba(255, 107, 107, 0.3);
+                  border-color: rgba(255, 107, 107, 0.5);
+                  transform: translateY(-1px);
+                }
+
+                .aumoor-edit-body {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                }
+
+                .edit-field-group {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+                }
+
+                .edit-field-label {
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #00d4ff;
+                  margin-bottom: 6px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .aumoor-edit-input {
+                  width: 100%;
+                  padding: 12px 14px;
+                  border: 2px solid rgba(0, 212, 255, 0.3);
+                  border-radius: 10px;
+                  font-size: 14px;
+                  font-weight: 500;
+                  background: rgba(0, 0, 0, 0.3);
+                  transition: all 0.3s ease;
+                  color: #ffffff;
+                  backdrop-filter: blur(10px);
+                }
+
+                .aumoor-edit-input:focus {
+                  outline: none;
+                  border-color: rgba(0, 212, 255, 0.6);
+                  background: rgba(0, 0, 0, 0.4);
+                  box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1);
+                  transform: translateY(-1px);
+                }
+
+                .aumoor-edit-input::placeholder {
+                  color: rgba(255, 255, 255, 0.5);
+                  font-weight: 400;
+                  font-style: italic;
+                }
+
+                .aumoor-edit-textarea {
+                  width: 100%;
+                  padding: 12px 14px;
+                  border: 2px solid rgba(0, 212, 255, 0.3);
+                  border-radius: 10px;
+                  font-size: 14px;
+                  background: rgba(0, 0, 0, 0.3);
+                  transition: all 0.3s ease;
+                  resize: vertical;
+                  min-height: 80px;
+                  font-family: inherit;
+                  line-height: 1.5;
+                  color: #ffffff;
+                  backdrop-filter: blur(10px);
+                }
+
+                .aumoor-edit-textarea:focus {
+                  outline: none;
+                  border-color: rgba(0, 212, 255, 0.6);
+                  background: rgba(0, 0, 0, 0.4);
+                  box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.1);
+                  transform: translateY(-1px);
+                }
+
+                .aumoor-edit-textarea::placeholder {
+                  color: rgba(255, 255, 255, 0.5);
+                  font-style: italic;
+                  font-weight: 400;
+                }
+
+                .aumoor-add-section {
+                  text-align: center;
+                  padding: 24px;
+                  border: 3px dashed rgba(0, 212, 255, 0.3);
+                  border-radius: 16px;
+                  background: rgba(0, 0, 0, 0.3);
+                  transition: all 0.3s ease;
+                  position: relative;
+                  overflow: hidden;
+                  backdrop-filter: blur(10px);
+                }
+
+                .aumoor-add-section::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: -100%;
+                  width: 100%;
+                  height: 100%;
+                  background: linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(0, 212, 255, 0.1),
+                    transparent
+                  );
+                  transition: left 0.5s ease;
+                }
+
+                .aumoor-add-section:hover {
+                  border-color: rgba(0, 212, 255, 0.5);
+                  background: rgba(0, 0, 0, 0.4);
+                  transform: translateY(-2px);
+                  box-shadow: 0 8px 16px rgba(0, 212, 255, 0.1);
+                }
+
+                .aumoor-add-section:hover::before {
+                  left: 100%;
+                }
+
+                .aumoor-add-btn {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 10px;
+                  padding: 16px 28px;
+                  background: linear-gradient(135deg, #00d4ff, #0099cc);
+                  color: white;
+                  border: none;
+                  border-radius: 12px;
+                  font-size: 15px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.3s ease;
+                  box-shadow: 0 4px 8px rgba(0, 212, 255, 0.2);
+                  position: relative;
+                  overflow: hidden;
+                }
+
+                .aumoor-add-btn::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: -100%;
+                  width: 100%;
+                  height: 100%;
+                  background: linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.2),
+                    transparent
+                  );
+                  transition: left 0.5s ease;
+                }
+
+                .aumoor-add-btn:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 6px 12px rgba(0, 212, 255, 0.3);
+                  background: linear-gradient(135deg, #0099cc, #006699);
+                }
+
+                .aumoor-add-btn:hover::before {
+                  left: 100%;
+                }
+
+                /* Jama'at Activities Premium Styles */
+                .jamaat-activities-container {
+                  background: rgba(0, 0, 0, 0.4);
+                  backdrop-filter: blur(25px);
+                  border: 2px solid rgba(0, 212, 255, 0.3);
+                  border-radius: 20px;
+                  padding: 20px;
+                  margin: 0;
+                }
+
+                .jamaat-section {
+                  background: rgba(0, 0, 0, 0.4);
+                  backdrop-filter: blur(25px);
+                  border: 2px solid rgba(0, 212, 255, 0.2);
+                  border-radius: 16px;
+                  margin-bottom: 20px;
+                  overflow: hidden;
+                }
+
+                .section-title-line {
+                  background: linear-gradient(
+                    135deg,
+                    #00d4ff,
+                    #0099cc,
+                    #006699
+                  );
+                  border: 1px solid rgba(0, 212, 255, 0.4);
+                  border-radius: 12px;
+                  color: #ffffff;
+                  font-weight: 700;
+                  padding: 12px 16px;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                  position: relative;
+                }
+
+                .section-title-line::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: linear-gradient(
+                    135deg,
+                    rgba(0, 0, 0, 0.2) 0%,
+                    rgba(0, 0, 0, 0.1) 100%
+                  );
+                  border-radius: 12px;
+                }
+
+                .section-title-line span {
+                  position: relative;
+                  z-index: 1;
+                }
+
+                .section-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                  gap: 16px;
+                  padding: 20px;
+                }
+
+                .section-item {
+                  background: rgba(0, 0, 0, 0.4);
+                  border: 1px solid rgba(0, 212, 255, 0.2);
+                  border-radius: 12px;
+                  padding: 16px;
+                  transition: all 0.3s ease;
+                  backdrop-filter: blur(10px);
+                  display: flex;
+                  gap: 12px;
+                }
+
+                .section-item:hover {
+                  border-color: rgba(0, 212, 255, 0.4);
+                  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
+                  transform: translateY(-2px);
+                }
+
+                .section-icon {
+                  width: 40px;
+                  height: 40px;
+                  border-radius: 10px;
+                  background: rgba(0, 212, 255, 0.2);
+                  color: #00d4ff;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  flex: 0 0 40px;
+                  font-size: 16px;
+                  border: 1px solid rgba(0, 212, 255, 0.3);
+                }
+
+                .section-body {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                  flex: 1;
+                }
+
+                .section-item-title {
+                  font-weight: 700;
+                  color: #00d4ff;
+                  font-size: 15px;
+                  line-height: 1.3;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .section-item-note {
+                  color: rgba(255, 255, 255, 0.8);
+                  font-size: 13px;
+                  line-height: 1.4;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                /* Edit Mode Styles for Jama'at Activities */
+                .jamaat-edit-section {
+                  background: rgba(0, 0, 0, 0.4);
+                  backdrop-filter: blur(25px);
+                  border: 2px solid rgba(0, 212, 255, 0.2);
+                  border-radius: 16px;
+                  margin-bottom: 20px;
+                  overflow: hidden;
+                  transition: all 0.3s ease;
+                }
+
+                .jamaat-edit-section:hover {
+                  border-color: rgba(0, 212, 255, 0.4);
+                  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
+                }
+
+                .jamaat-edit-title-line {
+                  background: linear-gradient(
+                    135deg,
+                    #00d4ff,
+                    #0099cc,
+                    #006699
+                  );
+                  border: 1px solid rgba(0, 212, 255, 0.4);
+                  border-radius: 12px;
+                  color: #ffffff;
+                  font-weight: 700;
+                  padding: 12px 16px;
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                  position: relative;
+                }
+
+                .jamaat-edit-title-line::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: linear-gradient(
+                    135deg,
+                    rgba(0, 0, 0, 0.2) 0%,
+                    rgba(0, 0, 0, 0.1) 100%
+                  );
+                  border-radius: 12px;
+                }
+
+                @keyframes pulse {
+                  0%,
+                  100% {
+                    opacity: 1;
+                  }
+                  50% {
+                    opacity: 0.7;
+                  }
+                }
+
+                /* Responsive Design */
+                @media (max-width: 768px) {
+                  .aumoor-grid,
+                  .section-grid {
+                    grid-template-columns: 1fr;
+                    gap: 12px;
+                  }
+
+                  .aumoor-edit-grid {
+                    grid-template-columns: 1fr;
+                    gap: 16px;
+                  }
+
+                  .aumoor-card,
+                  .section-item {
+                    padding: 12px;
+                  }
+
+                  .aumoor-edit-card {
+                    padding: 16px;
+                  }
+
+                  .aumoor-icon,
+                  .section-icon {
+                    width: 36px;
+                    height: 36px;
+                    font-size: 14px;
+                  }
+                }
+              `}</style>
             </div>
           )}
         </div>

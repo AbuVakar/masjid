@@ -1,11 +1,7 @@
 import {
   FaUsers,
   FaGraduationCap,
-  FaUserTie,
-  FaUser,
   FaCalendarAlt,
-  FaCalendarDay,
-  FaCalendarWeek,
   FaHome,
   FaFilePdf,
 } from 'react-icons/fa';
@@ -13,67 +9,117 @@ import {
 export const getDashboardCards = (stats, onNavigate) => [
   {
     title: 'Religious Education',
+    description: 'Islamic education and learning statistics',
     icon: FaGraduationCap,
-    color: 'from-green-500 to-emerald-600',
-    cards: [
+    color: 'green',
+    count: stats.totalHafiz + stats.totalUlma + stats.totalAdults,
+    primaryAction: 'education',
+    items: [
       {
         title: 'Total Hafiz',
-        value: stats.totalHafiz,
-        icon: FaGraduationCap,
-        color: 'bg-gradient-to-r from-green-500 to-emerald-600',
-        textColor: 'text-green-600',
-        bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
         description: 'Members who have memorized Quran',
-        action: () => onNavigate('members', { filter: 'hafiz' }),
+        icon: '📖',
+        action: 'members',
       },
       {
         title: 'Total Ulma',
-        value: stats.totalUlma,
-        icon: FaUserTie,
-        color: 'bg-gradient-to-r from-blue-500 to-indigo-600',
-        textColor: 'text-blue-600',
-        bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50',
         description: 'Islamic scholars and learned members',
-        action: () => onNavigate('members', { filter: 'ulma' }),
+        icon: '🎓',
+        action: 'members',
       },
       {
         title: 'Total Adults',
-        value: stats.totalAdults,
-        icon: FaUser,
-        color: 'bg-gradient-to-r from-purple-500 to-violet-600',
-        textColor: 'text-purple-600',
-        bgColor: 'bg-gradient-to-br from-purple-50 to-violet-50',
         description: 'Members aged 18 and above',
-        action: () => onNavigate('members', { filter: 'adults' }),
+        icon: '👥',
+        action: 'members',
       },
     ],
   },
   {
     title: 'Jamaat Activities',
+    description: 'Community participation and activities',
     icon: FaCalendarAlt,
-    color: 'from-orange-500 to-red-600',
-    cards: [
+    color: 'orange',
+    count:
+      stats.total3Days +
+      stats.total10Days +
+      stats.total40Days +
+      stats.total4Months,
+    primaryAction: 'jamaat',
+    items: [
       {
         title: '3 Days Jamaat',
-        value: stats.total3Days,
-        icon: FaCalendarDay,
-        color: 'bg-gradient-to-r from-yellow-500 to-orange-600',
-        textColor: 'text-yellow-600',
-        bgColor: 'bg-gradient-to-br from-yellow-50 to-orange-50',
         description: 'Short-term jamaat participants',
-        action: () =>
-          onNavigate('members', { filter: 'jamaat', value: '3 Days' }),
+        icon: '📅',
+        action: 'members',
       },
       {
         title: '10 Days Jamaat',
-        value: stats.total10Days,
-        icon: FaCalendarWeek,
-        color: 'bg-gradient-to-r from-orange-500 to-red-600',
-        textColor: 'text-orange-600',
-        bgColor: 'bg-gradient-to-br from-orange-50 to-red-50',
         description: 'Medium-term jamaat participants',
-        action: () =>
-          onNavigate('members', { filter: 'jamaat', value: '10 Days' }),
+        icon: '📆',
+        action: 'members',
+      },
+      {
+        title: '40 Days Jamaat',
+        description: 'Extended jamaat participants',
+        icon: '🗓️',
+        action: 'members',
+      },
+    ],
+  },
+  {
+    title: 'Community Resources',
+    description: 'Educational materials and resources',
+    icon: FaFilePdf,
+    color: 'purple',
+    count: stats.totalResources,
+    primaryAction: 'resources',
+    items: [
+      {
+        title: 'PDF Documents',
+        description: 'Islamic literature and guides',
+        icon: '📄',
+        action: 'resources',
+      },
+      {
+        title: 'Audio Resources',
+        description: 'Lectures and recitations',
+        icon: '🎵',
+        action: 'resources',
+      },
+      {
+        title: 'Video Content',
+        description: 'Educational videos and lectures',
+        icon: '🎥',
+        action: 'resources',
+      },
+    ],
+  },
+  {
+    title: 'House Management',
+    description: 'Community housing and organization',
+    icon: FaHome,
+    color: 'cyan',
+    count: stats.totalHouses,
+    primaryAction: 'houses',
+    items: [
+      {
+        title: 'Total Houses',
+        description: 'Registered community houses',
+        icon: '🏠',
+        action: 'houses',
+      },
+      {
+        title: 'Active Members',
+        description: 'Currently active community members',
+        icon: '👨‍👩‍👧‍👦',
+        action: 'members',
+      },
+      {
+        title: 'House Leaders',
+        description: 'Designated house representatives',
+        icon: '👨‍💼',
+        action: 'members',
       },
     ],
   },
@@ -84,22 +130,22 @@ export const getSummaryStats = (stats, houses, members) => [
     title: 'Total Members',
     value: members.flatMap((houseMembers) => houseMembers || []).length,
     icon: FaUsers,
-    color: 'bg-gradient-to-r from-blue-500 to-indigo-600',
-    bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50',
+    color: 'blue',
+    activeCount: members.flatMap((houseMembers) => houseMembers || []).length,
   },
   {
     title: 'Total Houses',
     value: houses.length,
     icon: FaHome,
-    color: 'bg-gradient-to-r from-green-500 to-emerald-600',
-    bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
+    color: 'green',
+    activeCount: houses.length,
   },
   {
     title: 'Total Resources',
     value: stats.totalResources,
     icon: FaFilePdf,
-    color: 'bg-gradient-to-r from-purple-500 to-violet-600',
-    bgColor: 'bg-gradient-to-br from-purple-50 to-violet-50',
+    color: 'purple',
+    activeCount: stats.totalResources,
   },
   {
     title: 'Active Jamaat',
@@ -109,7 +155,11 @@ export const getSummaryStats = (stats, houses, members) => [
       stats.total40Days +
       stats.total4Months,
     icon: FaCalendarAlt,
-    color: 'bg-gradient-to-r from-orange-500 to-red-600',
-    bgColor: 'bg-gradient-to-br from-orange-50 to-red-50',
+    color: 'orange',
+    activeCount:
+      stats.total3Days +
+      stats.total10Days +
+      stats.total40Days +
+      stats.total4Months,
   },
 ];

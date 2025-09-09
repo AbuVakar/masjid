@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 const { enhancedLogger } = require('./logger');
+const {
+  adminNotificationService,
+  AdminNotificationService,
+} = require('./adminNotificationService');
 
 /**
  * Audit Log Schema
@@ -133,6 +137,43 @@ class AuditLogger {
       });
 
       await auditEntry.save();
+
+      // Check if this action should trigger admin notification
+      const importanceCheck = AdminNotificationService.isImportantAction(
+        action,
+        severity,
+      );
+
+      if (importanceCheck.important) {
+        try {
+          const notificationMessage =
+            AdminNotificationService.generateNotificationMessage(
+              action,
+              details,
+              username || 'anonymous',
+              resource,
+            );
+
+          await adminNotificationService.sendAdminNotification({
+            id: auditEntry._id.toString(),
+            action,
+            resource,
+            username: username || 'anonymous',
+            message: notificationMessage,
+            details,
+            severity,
+            priority: importanceCheck.priority,
+            level: importanceCheck.level,
+            timestamp: auditEntry.timestamp,
+            success,
+          });
+        } catch (notificationError) {
+          enhancedLogger.error('Failed to send admin notification', {
+            error: notificationError.message,
+            auditEntry: auditEntry._id,
+          });
+        }
+      }
 
       // Also log to console for development
       if (process.env.NODE_ENV === 'development') {

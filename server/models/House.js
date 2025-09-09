@@ -24,22 +24,7 @@ const memberSchema = new mongoose.Schema(
     },
     occupation: {
       type: String,
-      enum: [
-        'Child',
-        'Student',
-        'Farmer',
-        'Businessman',
-        'Other',
-        'Free',
-        'Shopkeeper',
-        'Worker',
-        'Ulma',
-        'Hafiz',
-        'Teacher',
-        'Engineer',
-        'Doctor',
-        'Teacher',
-      ],
+      trim: true,
       default: 'Other',
     },
     education: {

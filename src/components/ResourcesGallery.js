@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNotify } from '../context/NotificationContext';
 import {
-  FaSearch,
   FaDownload,
   FaEye,
   FaEdit,
@@ -11,12 +10,6 @@ import {
   FaImage,
   FaVideo,
   FaLink,
-  FaTags,
-  FaCalendarAlt,
-  FaUser,
-  FaSort,
-  FaSortUp,
-  FaSortDown,
   FaTh,
   FaList,
 } from 'react-icons/fa';
@@ -44,11 +37,13 @@ const ResourcesGallery = ({
 
   // File type configurations
   const fileTypes = {
-    pdf: { icon: FaFilePdf, label: 'PDF', color: 'text-red-500' },
-    document: { icon: FaFileWord, label: 'Document', color: 'text-blue-500' },
-    image: { icon: FaImage, label: 'Image', color: 'text-green-500' },
-    video: { icon: FaVideo, label: 'Video', color: 'text-purple-500' },
-    link: { icon: FaLink, label: 'Link', color: 'text-orange-500' },
+    PDF: { icon: FaFilePdf, label: 'PDF', color: 'text-red-500' },
+    Document: { icon: FaFileWord, label: 'Document', color: 'text-blue-500' },
+    Image: { icon: FaImage, label: 'Image', color: 'text-green-500' },
+    Video: { icon: FaVideo, label: 'Video', color: 'text-purple-500' },
+    Link: { icon: FaLink, label: 'Link', color: 'text-orange-500' },
+    Audio: { icon: FaLink, label: 'Audio', color: 'text-yellow-500' },
+    Other: { icon: FaLink, label: 'Other', color: 'text-gray-500' },
   };
 
   // Get all unique categories and tags
@@ -99,17 +94,17 @@ const ResourcesGallery = ({
           aValue = new Date(a.createdAt);
           bValue = new Date(b.createdAt);
           break;
-        case 'downloadCount':
+        case 'downloads':
           aValue = a.downloadCount || 0;
           bValue = b.downloadCount || 0;
           break;
         case 'category':
-          aValue = a.category;
-          bValue = b.category;
+          aValue = a.category.toLowerCase();
+          bValue = b.category.toLowerCase();
           break;
         default:
-          aValue = a[sortBy];
-          bValue = b[sortBy];
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
       }
 
       if (sortOrder === 'asc') {
@@ -128,36 +123,6 @@ const ResourcesGallery = ({
     sortBy,
     sortOrder,
   ]);
-
-  // Handle search
-  const handleSearch = useCallback((e) => {
-    setSearchTerm(e.target.value);
-  }, []);
-
-  // Handle category filter
-  const handleCategoryFilter = useCallback((category) => {
-    setSelectedCategory(category);
-  }, []);
-
-  // Handle tag filter
-  const handleTagToggle = useCallback((tag) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
-  }, []);
-
-  // Handle sorting
-  const handleSort = useCallback(
-    (field) => {
-      if (sortBy === field) {
-        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-      } else {
-        setSortBy(field);
-        setSortOrder('desc');
-      }
-    },
-    [sortBy],
-  );
 
   // Handle download/view
   const handleDownload = useCallback(
@@ -216,19 +181,6 @@ const ResourcesGallery = ({
     });
   }, []);
 
-  // Get sort icon
-  const getSortIcon = useCallback(
-    (field) => {
-      if (sortBy !== field) return <FaSort className='text-gray-400' />;
-      return sortOrder === 'asc' ? (
-        <FaSortUp className='text-blue-500' />
-      ) : (
-        <FaSortDown className='text-blue-500' />
-      );
-    },
-    [sortBy, sortOrder],
-  );
-
   if (loading) {
     return (
       <div className='flex items-center justify-center py-12'>
@@ -238,380 +190,273 @@ const ResourcesGallery = ({
   }
 
   return (
-    <div className='space-y-6'>
-      {/* Header with search and filters */}
-      <div className='bg-white rounded-lg shadow-sm p-4'>
-        <div className='flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0'>
-          {/* Search */}
-          <div className='relative flex-1 max-w-md'>
-            <FaSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
-            <input
-              type='text'
-              placeholder='Search resources...'
-              value={searchTerm}
-              onChange={handleSearch}
-              className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-            />
+    <div className='space-y-8'>
+      {/* Premium Search and Filters */}
+      <div className='bg-gradient-to-br from-slate-700/50 via-purple-700/50 to-slate-700/50 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl'>
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+          {/* Premium Search */}
+          <div className='lg:col-span-2'>
+            <div className='relative'>
+              <input
+                type='text'
+                placeholder='🔍 Search Islamic resources, Quran guides, lectures, and educational materials...'
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className='w-full px-6 py-4 bg-slate-800/50 border border-white/20 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent backdrop-blur-sm transition-all duration-300'
+              />
+              <div className='absolute right-4 top-1/2 transform -translate-y-1/2'>
+                <div className='w-2 h-2 bg-purple-400 rounded-full animate-pulse'></div>
+              </div>
+            </div>
           </div>
 
-          {/* View mode toggle */}
+          {/* Quick Stats */}
+          <div className='flex items-center justify-center'>
+            <div className='text-center'>
+              <div className='text-white text-2xl font-bold mb-1'>
+                {filteredAndSortedResources.length} of {resources.length}{' '}
+                Resources
+              </div>
+              <div className='text-purple-200 text-sm'>
+                Discover premium Islamic knowledge and educational materials
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Premium Filters */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8'>
+          {/* Category Filter */}
+          <div>
+            <label className='block text-purple-200 text-sm font-semibold mb-3'>
+              📁Filter by Category
+            </label>
+            <div className='flex flex-wrap gap-3'>
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    selectedCategory === category
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50 hover:text-white border border-white/10'
+                  }`}
+                >
+                  {category === 'all' ? '📚 All Resources' : `📁 ${category}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tags Filter */}
+          <div>
+            <label className='block text-purple-200 text-sm font-semibold mb-3'>
+              🏷️Filter by Tags
+            </label>
+            <div className='flex flex-wrap gap-2 max-h-24 overflow-y-auto'>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() =>
+                    setSelectedTags((prev) =>
+                      prev.includes(tag)
+                        ? prev.filter((t) => t !== tag)
+                        : [...prev, tag],
+                    )
+                  }
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 ${
+                    selectedTags.includes(tag)
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                      : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50 hover:text-white border border-white/10'
+                  }`}
+                >
+                  🏷️ {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Sort and View Controls */}
+        <div className='flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-white/10'>
+          <div className='flex items-center space-x-4'>
+            <span className='text-purple-200 text-sm font-semibold'>
+              Sort by:
+            </span>
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [newSortBy, newSortOrder] = e.target.value.split('-');
+                setSortBy(newSortBy);
+                setSortOrder(newSortOrder);
+              }}
+              className='px-4 py-2 bg-slate-800/50 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent backdrop-blur-sm'
+            >
+              <option value='createdAt-desc'>🕒📅 Date</option>
+              <option value='title-asc'>📄📝 Title</option>
+              <option value='downloads-desc'>🔥⬇️ Popular</option>
+              <option value='category-asc'>📂📁 Type</option>
+            </select>
+          </div>
+
           <div className='flex items-center space-x-2'>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-colors ${
+              className={`p-2 rounded-lg transition-all duration-300 ${
                 viewMode === 'grid'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
             >
               <FaTh size={16} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-colors ${
+              className={`p-2 rounded-lg transition-all duration-300 ${
                 viewMode === 'list'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
               }`}
             >
               <FaList size={16} />
             </button>
           </div>
         </div>
-
-        {/* Filters */}
-        <div className='mt-4 space-y-4'>
-          {/* Category filter */}
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>
-              Category Filter
-            </label>
-            <div className='flex flex-wrap gap-2'>
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => handleCategoryFilter(category)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    selectedCategory === category
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {category === 'all'
-                    ? 'All Categories'
-                    : category.charAt(0).toUpperCase() + category.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tags filter */}
-          {allTags.length > 0 && (
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                Tags Filter
-              </label>
-              <div className='flex flex-wrap gap-2'>
-                {allTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => handleTagToggle(tag)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                      selectedTags.includes(tag)
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Results count and sorting */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0'>
-        <p className='text-sm text-gray-600'>
-          Showing {filteredAndSortedResources.length} of {resources.length}{' '}
-          resources
-        </p>
-
-        <div className='flex items-center space-x-4'>
-          <span className='text-sm text-gray-600'>Sort by:</span>
-          <div className='flex space-x-2'>
-            {[
-              { field: 'createdAt', label: 'Date' },
-              { field: 'title', label: 'Title' },
-              { field: 'downloadCount', label: 'Downloads' },
-              { field: 'category', label: 'Category' },
-            ].map(({ field, label }) => (
-              <button
-                key={field}
-                onClick={() => handleSort(field)}
-                className='flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors'
-              >
-                <span>{label}</span>
-                {getSortIcon(field)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Resources Grid/List */}
+      {/* Resources Display */}
       {filteredAndSortedResources.length === 0 ? (
-        <div className='text-center py-12'>
-          <div className='text-gray-400 mb-4'>
-            <FaSearch size={48} className='mx-auto' />
-          </div>
-          <h3 className='text-lg font-medium text-gray-900 mb-2'>
-            No resources found
+        <div className='bg-gradient-to-br from-slate-700/50 via-purple-700/50 to-slate-700/50 backdrop-blur-xl rounded-3xl p-12 border border-white/10 shadow-2xl text-center'>
+          <div className='text-6xl mb-6'>📚</div>
+          <h3 className='text-2xl font-bold text-white mb-4'>
+            No Resources Found
           </h3>
-          <p className='text-gray-600'>
-            Try adjusting your search terms or filters to find what you're
-            looking for.
+          <p className='text-purple-200 text-lg mb-6'>
+            Try adjusting your search terms or filters to find premium Islamic
+            resources
           </p>
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedCategory('all');
+              setSelectedTags([]);
+            }}
+            className='px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-semibold'
+          >
+            Clear Filters
+          </button>
         </div>
       ) : (
         <div
           className={
             viewMode === 'grid'
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
               : 'space-y-4'
           }
         >
           {filteredAndSortedResources.map((resource) => (
-            <ResourceCard
+            <div
               key={resource.id}
-              resource={resource}
-              fileTypes={fileTypes}
-              viewMode={viewMode}
-              canEdit={canEdit}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onDownload={handleDownload}
-              formatFileSize={formatFileSize}
-              formatDate={formatDate}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Resource Card Component
-const ResourceCard = ({
-  resource,
-  fileTypes,
-  viewMode,
-  canEdit,
-  onEdit,
-  onDelete,
-  onDownload,
-  formatFileSize,
-  formatDate,
-}) => {
-  const fileType = fileTypes[resource.category];
-
-  if (viewMode === 'list') {
-    return (
-      <div className='bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow'>
-        <div className='flex items-center space-x-4'>
-          {/* Icon */}
-          <div className={`p-3 rounded-lg bg-gray-50 ${fileType.color}`}>
-            <fileType.icon size={24} />
-          </div>
-
-          {/* Content */}
-          <div className='flex-1 min-w-0'>
-            <div className='flex items-start justify-between'>
-              <div className='flex-1 min-w-0'>
-                <h3 className='text-lg font-medium text-gray-900 truncate'>
-                  {resource.title}
-                </h3>
-                <p className='text-sm text-gray-600 mt-1 line-clamp-2'>
-                  {resource.description}
-                </p>
-
-                {/* Tags */}
-                {resource.tags.length > 0 && (
-                  <div className='flex flex-wrap gap-1 mt-2'>
-                    {resource.tags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className='inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full'
-                      >
-                        <FaTags size={10} className='mr-1' />
-                        {tag}
-                      </span>
-                    ))}
-                    {resource.tags.length > 3 && (
-                      <span className='text-xs text-gray-500'>
-                        +{resource.tags.length - 3} more
-                      </span>
+              className='group bg-gradient-to-br from-slate-700/50 via-purple-700/50 to-slate-700/50 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-purple-400/50 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/25'
+            >
+              {/* Resource Header */}
+              <div className='flex items-start justify-between mb-4'>
+                <div className='flex items-center space-x-3'>
+                  <div className='p-3 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-lg border border-white/10'>
+                    {React.createElement(
+                      fileTypes[resource.type]?.icon || FaLink,
+                      {
+                        size: 24,
+                        className:
+                          fileTypes[resource.type]?.color || 'text-gray-400',
+                      },
                     )}
+                  </div>
+                  <div>
+                    <h3 className='text-lg font-bold text-white group-hover:text-purple-200 transition-colors duration-300'>
+                      {resource.title}
+                    </h3>
+                    <p className='text-sm text-purple-200'>
+                      {resource.category}
+                    </p>
+                  </div>
+                </div>
+                {canEdit && (
+                  <div className='flex items-center space-x-2'>
+                    <button
+                      onClick={() => onEdit(resource)}
+                      className='p-2 rounded-lg bg-slate-600/50 text-slate-300 hover:bg-slate-500/50 hover:text-white transition-all duration-300'
+                    >
+                      <FaEdit size={14} />
+                    </button>
+                    <button
+                      onClick={() => onDelete(resource.id)}
+                      className='p-2 rounded-lg bg-red-600/50 text-red-300 hover:bg-red-500/50 hover:text-white transition-all duration-300'
+                    >
+                      <FaTrash size={14} />
+                    </button>
                   </div>
                 )}
               </div>
 
-              {/* Actions */}
-              <div className='flex items-center space-x-2 ml-4'>
-                <button
-                  onClick={() => onDownload(resource)}
-                  className='p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors'
-                  title={resource.type === 'link' ? 'Open Link' : 'Download'}
-                >
-                  {resource.type === 'link' ? (
-                    <FaEye size={16} />
-                  ) : (
-                    <FaDownload size={16} />
-                  )}
-                </button>
+              {/* Resource Description */}
+              <p className='text-slate-300 text-sm mb-4 line-clamp-2'>
+                {resource.description}
+              </p>
 
-                {canEdit && (
-                  <>
-                    <button
-                      onClick={() => onEdit(resource)}
-                      className='p-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors'
-                      title='Edit'
+              {/* Resource Tags */}
+              {resource.tags && resource.tags.length > 0 && (
+                <div className='flex flex-wrap gap-2 mb-4'>
+                  {resource.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className='px-2 py-1 bg-slate-600/50 text-slate-300 text-xs rounded-full'
                     >
-                      <FaEdit size={16} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(resource.id)}
-                      className='p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors'
-                      title='Delete'
-                    >
-                      <FaTrash size={16} />
-                    </button>
-                  </>
+                      {tag}
+                    </span>
+                  ))}
+                  {resource.tags.length > 3 && (
+                    <span className='px-2 py-1 bg-slate-600/50 text-slate-300 text-xs rounded-full'>
+                      +{resource.tags.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Resource Meta */}
+              <div className='flex items-center justify-between text-xs text-slate-400 mb-4'>
+                <div className='flex items-center space-x-4'>
+                  <span>📅 {formatDate(resource.createdAt)}</span>
+                  <span>⬇️ {resource.downloadCount || 0}</span>
+                </div>
+                <div className='flex items-center space-x-2'>
+                  <span>💾 {formatFileSize(resource.fileSize)}</span>
+                  <span>👤 {resource.uploadedBy}</span>
+                </div>
+              </div>
+
+              {/* Resource Actions */}
+              <div className='flex items-center space-x-3'>
+                <button
+                  onClick={() => handleDownload(resource)}
+                  className='flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-semibold group-hover:shadow-lg group-hover:shadow-purple-500/25'
+                >
+                  <FaDownload size={16} />
+                  <span>Download</span>
+                </button>
+                {resource.type === 'link' && (
+                  <button
+                    onClick={() => window.open(resource.fileUrl, '_blank')}
+                    className='p-3 bg-slate-600/50 text-slate-300 rounded-2xl hover:bg-slate-500/50 hover:text-white transition-all duration-300'
+                  >
+                    <FaEye size={16} />
+                  </button>
                 )}
               </div>
             </div>
-
-            {/* Meta info */}
-            <div className='flex items-center space-x-4 mt-3 text-xs text-gray-500'>
-              <span className='flex items-center'>
-                <FaCalendarAlt className='mr-1' />
-                {formatDate(resource.createdAt)}
-              </span>
-              <span className='flex items-center'>
-                <FaUser className='mr-1' />
-                {resource.uploadedBy}
-              </span>
-              {resource.fileSize && (
-                <span>{formatFileSize(resource.fileSize)}</span>
-              )}
-              <span className='flex items-center'>
-                <FaDownload className='mr-1' />
-                {resource.downloadCount || 0} downloads
-              </span>
-            </div>
-          </div>
+          ))}
         </div>
-      </div>
-    );
-  }
-
-  // Grid view
-  return (
-    <div className='bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow overflow-hidden'>
-      {/* Header */}
-      <div className='p-4 border-b border-gray-100'>
-        <div className='flex items-start justify-between'>
-          <div className={`p-2 rounded-lg bg-gray-50 ${fileType.color}`}>
-            <fileType.icon size={20} />
-          </div>
-
-          {canEdit && (
-            <div className='flex items-center space-x-1'>
-              <button
-                onClick={() => onEdit(resource)}
-                className='p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors'
-                title='Edit'
-              >
-                <FaEdit size={14} />
-              </button>
-              <button
-                onClick={() => onDelete(resource.id)}
-                className='p-1 text-red-600 hover:bg-red-100 rounded transition-colors'
-                title='Delete'
-              >
-                <FaTrash size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className='p-4'>
-        <h3 className='font-medium text-gray-900 mb-2 line-clamp-2'>
-          {resource.title}
-        </h3>
-        <p className='text-sm text-gray-600 mb-3 line-clamp-3'>
-          {resource.description}
-        </p>
-
-        {/* Tags */}
-        {resource.tags.length > 0 && (
-          <div className='flex flex-wrap gap-1 mb-3'>
-            {resource.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className='inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full'
-              >
-                <FaTags size={10} className='mr-1' />
-                {tag}
-              </span>
-            ))}
-            {resource.tags.length > 2 && (
-              <span className='text-xs text-gray-500'>
-                +{resource.tags.length - 2} more
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Meta info */}
-        <div className='space-y-1 text-xs text-gray-500 mb-4'>
-          <div className='flex items-center justify-between'>
-            <span className='flex items-center'>
-              <FaCalendarAlt className='mr-1' />
-              {formatDate(resource.createdAt)}
-            </span>
-            <span className='flex items-center'>
-              <FaDownload className='mr-1' />
-              {resource.downloadCount || 0}
-            </span>
-          </div>
-          {resource.fileSize && (
-            <div className='flex items-center justify-between'>
-              <span>{formatFileSize(resource.fileSize)}</span>
-              <span className='flex items-center'>
-                <FaUser className='mr-1' />
-                {resource.uploadedBy}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Action button */}
-        <button
-          onClick={() => onDownload(resource)}
-          className='w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors'
-        >
-          {resource.type === 'link' ? (
-            <FaEye size={14} />
-          ) : (
-            <FaDownload size={14} />
-          )}
-          <span>{resource.type === 'link' ? 'Open Link' : 'Download'}</span>
-        </button>
-      </div>
+      )}
     </div>
   );
 };

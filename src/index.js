@@ -57,39 +57,32 @@ window.addEventListener('error', (event) => {
   // Avoid double-toasting Errors already caught by ErrorBoundary
 });
 
-// Register service worker only in production to avoid dev caching issues
+// Register service worker for both production and development
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    if (process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          if (registration.waiting) {
-            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered successfully:', registration);
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (
+                newWorker.state === 'installed' &&
+                navigator.serviceWorker.controller
+              ) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
           }
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (
-                  newWorker.state === 'installed' &&
-                  navigator.serviceWorker.controller
-                ) {
-                  newWorker.postMessage({ type: 'SKIP_WAITING' });
-                }
-              });
-            }
-          });
-        })
-        .catch(() => {});
-    } else {
-      // In development, ensure any existing SW is removed to prevent stale caches
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((regs) => {
-          regs.forEach((r) => r.unregister());
-        })
-        .catch(() => {});
-    }
+        });
+      })
+      .catch((error) => {
+        console.error('Service Worker registration failed:', error);
+      });
   });
 }

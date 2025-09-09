@@ -15,12 +15,10 @@ export const VALIDATION_RULES = {
       'Username must be 3-50 characters, letters, numbers, and underscores only',
   },
   PASSWORD: {
-    MIN_LENGTH: 8,
+    MIN_LENGTH: 6,
     MAX_LENGTH: 128,
-    PATTERN:
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/])[a-zA-Z\d@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]{8,}$/,
-    MESSAGE:
-      'Password must be at least 8 characters with uppercase, lowercase, number, and special character',
+    PATTERN: /^.{6,}$/,
+    MESSAGE: 'Password must be at least 6 characters long',
   },
   MOBILE: {
     PATTERN: /^[6-9]\d{9}$/,
@@ -42,9 +40,9 @@ export const VALIDATION_RULES = {
   STREET_NAME: {
     MIN_LENGTH: 2,
     MAX_LENGTH: 100,
-    PATTERN: /^[A-Za-z0-9\s-.]+$/,
+    PATTERN: /^[A-Za-z0-9\s\-.,]+$/,
     MESSAGE:
-      'Street name can contain letters, numbers, spaces, dots, and hyphens only',
+      'Street name can contain letters, numbers, spaces, hyphens, dots, and commas only',
   },
   TIME_HHMM: {
     PATTERN: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
@@ -67,15 +65,15 @@ export const validateTime = (time) => {
  * @param {string} input - Input string to sanitize
  * @returns {string} Sanitized string
  */
-export const sanitizeString = (input) => {
-  if (typeof input !== 'string') return '';
+export const sanitizeString = (str) => {
+  if (typeof str !== 'string') return '';
 
-  return input
-    .trim()
-    .replace(/[<>]/g, '') // Remove potential HTML tags
+  // Remove potentially dangerous characters while preserving valid content
+  return str
+    .replace(/[<>]/g, '') // Remove < and > to prevent XSS
     .replace(/javascript:/gi, '') // Remove javascript: protocol
     .replace(/on\w+=/gi, '') // Remove event handlers
-    .substring(0, 1000); // Limit length
+    .trim(); // Only trim leading/trailing spaces, preserve internal spaces
 };
 
 /**
@@ -142,19 +140,25 @@ export const validatePassword = (password) => {
  * @returns {Object} Validation result
  */
 export const validateMobile = (mobile) => {
-  const sanitized = sanitizeString(mobile);
   const errors = [];
+  let sanitized = '';
 
-  if (!sanitized) {
+  if (!mobile) {
     errors.push('Mobile number is required');
-  } else if (!VALIDATION_RULES.MOBILE.PATTERN.test(sanitized)) {
-    errors.push(VALIDATION_RULES.MOBILE.MESSAGE);
+  } else {
+    // International mobile number validation
+    const mobileRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!mobileRegex.test(mobile.replace(/\s/g, ''))) {
+      errors.push('Please enter a valid mobile number');
+    } else {
+      sanitized = mobile.replace(/\s/g, '').trim();
+    }
   }
 
   return {
     isValid: errors.length === 0,
     errors,
-    sanitized: errors.length === 0 ? sanitized : null,
+    sanitized,
   };
 };
 
@@ -164,19 +168,25 @@ export const validateMobile = (mobile) => {
  * @returns {Object} Validation result
  */
 export const validateEmail = (email) => {
-  const sanitized = sanitizeString(email);
   const errors = [];
+  let sanitized = '';
 
-  if (!sanitized) {
+  if (!email) {
     errors.push('Email is required');
-  } else if (!VALIDATION_RULES.EMAIL.PATTERN.test(sanitized)) {
-    errors.push(VALIDATION_RULES.EMAIL.MESSAGE);
+  } else {
+    // Basic email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      errors.push('Please enter a valid email address');
+    } else {
+      sanitized = email.toLowerCase().trim();
+    }
   }
 
   return {
     isValid: errors.length === 0,
     errors,
-    sanitized: errors.length === 0 ? sanitized : null,
+    sanitized,
   };
 };
 
@@ -274,10 +284,11 @@ export const validateMember = (member) => {
   const sanitized = {};
 
   // Validate required fields
-  if (!member.name || !sanitizeString(member.name)) {
+  if (!member.name || !member.name.trim()) {
     errors.push('Member name is required');
   } else {
-    sanitized.name = sanitizeString(member.name);
+    // Preserve spaces in names, only sanitize for XSS
+    sanitized.name = member.name.trim();
   }
 
   if (!member.age) {
@@ -334,7 +345,7 @@ export const validateMember = (member) => {
  * @returns {Object} Validation result
  */
 export const validateStreetName = (street) => {
-  const sanitized = sanitizeString(street);
+  const sanitized = street ? street.trim() : '';
   const errors = [];
 
   if (!sanitized) {

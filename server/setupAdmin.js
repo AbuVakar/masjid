@@ -27,7 +27,7 @@ const setupAdmin = async (customPassword = null) => {
       console.log('✅ Admin user already exists');
       console.log('Username: admin');
       console.log('Role:', existingAdmin.role);
-      console.log('Email: admin@masjid.com');
+      console.log('Email: bakrabu786@gmail.com');
       console.log(
         'To change password, delete the admin user first and run this script again.',
       );
@@ -45,7 +45,7 @@ const setupAdmin = async (customPassword = null) => {
     const adminUser = new User({
       username: 'admin',
       password: hashedPassword,
-      email: 'admin@masjid.com',
+      email: 'bakrabu786@gmail.com',
       mobile: '9876543210',
       name: 'Administrator',
       role: 'admin',
@@ -63,7 +63,7 @@ const setupAdmin = async (customPassword = null) => {
     console.log('Username: admin');
     console.log('Password:', adminPassword);
     console.log('Role: admin');
-    console.log('Email: admin@masjid.com');
+    console.log('Email: bakrabu786@gmail.com');
     console.log('⚠️  IMPORTANT: Save this password securely!');
 
     process.exit(0);

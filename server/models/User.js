@@ -46,10 +46,32 @@ const userSchema = new mongoose.Schema(
     },
     preferences: {
       notifications: {
-        type: Boolean,
-        default: true,
+        prayer: {
+          type: Boolean,
+          default: true,
+        },
+        jamaat: {
+          type: Boolean,
+          default: true,
+        },
+        info: {
+          type: Boolean,
+          default: true,
+        },
+        clearAll: {
+          type: Boolean,
+          default: false,
+        },
+        admin: {
+          type: Boolean,
+          default: false,
+        },
       },
       quietHours: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
         start: {
           type: String,
           default: '22:00',
@@ -70,16 +92,34 @@ const userSchema = new mongoose.Schema(
         default: 'en',
       },
       prayerTiming: {
-        before: {
-          type: Number,
-          default: 15,
-          min: 0,
-          max: 60,
-        },
-        after: {
+        Fajr: {
           type: Number,
           default: 5,
-          min: 0,
+          min: 1,
+          max: 60,
+        },
+        Dhuhr: {
+          type: Number,
+          default: 5,
+          min: 1,
+          max: 60,
+        },
+        Asr: {
+          type: Number,
+          default: 5,
+          min: 1,
+          max: 60,
+        },
+        Maghrib: {
+          type: Number,
+          default: 5,
+          min: 1,
+          max: 60,
+        },
+        Isha: {
+          type: Number,
+          default: 5,
+          min: 1,
           max: 60,
         },
       },
@@ -135,7 +175,7 @@ userSchema.methods.isGuest = function () {
   return this.role === 'guest';
 };
 
-// Pre-save middleware to ensure unique username
+// Pre-save middleware to ensure unique username and protect main admin
 userSchema.pre('save', async function (next) {
   if (this.isModified('username')) {
     try {
@@ -156,6 +196,12 @@ userSchema.pre('save', async function (next) {
       return next(error);
     }
   }
+
+  // Protect main admin user from role changes
+  if (this.username === 'admin' && this.isModified('role')) {
+    return next(new Error('Cannot modify the main administrator role'));
+  }
+
   next();
 });
 

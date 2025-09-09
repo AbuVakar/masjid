@@ -28,6 +28,7 @@
   "theme_color": "#0f5132",
   "background_color": "#ffffff",
   "lang": "en",
+  "gcm_sender_id": "103953800507",
   "categories": ["productivity", "utilities", "religious"],
   "screenshots": [
     {

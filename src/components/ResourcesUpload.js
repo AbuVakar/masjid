@@ -9,6 +9,9 @@ import {
   FaFileWord,
   FaTimes,
   FaTags,
+  FaBook,
+  FaMusic,
+  FaFileAlt,
 } from 'react-icons/fa';
 import {
   logError,
@@ -25,8 +28,7 @@ const ResourcesUpload = ({
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     description: initialData?.description || '',
-    category: initialData?.category || 'pdf',
-    type: initialData?.type || 'file',
+    category: initialData?.category || 'PDF',
     fileUrl: initialData?.fileUrl || '',
     tags: initialData?.tags || [],
   });
@@ -34,43 +36,55 @@ const ResourcesUpload = ({
   const [file, setFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [newTag, setNewTag] = useState('');
   const { notify } = useNotify();
 
-  // File type configurations
+  // Simplified file type configurations
   const fileTypes = useMemo(
     () => ({
-      pdf: {
+      PDF: {
         icon: FaFilePdf,
-        label: 'PDF Document',
+        label: 'PDF',
+        color: '#ef4444',
         accept: '.pdf',
-        mimeType: 'application/pdf',
       },
-      document: {
+      Document: {
         icon: FaFileWord,
-        label: 'Word Document',
+        label: 'Document',
+        color: '#3b82f6',
         accept: '.doc,.docx',
-        mimeType:
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       },
-      image: {
+      Image: {
         icon: FaImage,
         label: 'Image',
+        color: '#10b981',
         accept: '.jpg,.jpeg,.png,.gif',
-        mimeType: 'image/*',
       },
-      video: {
+      Video: {
         icon: FaVideo,
         label: 'Video',
+        color: '#8b5cf6',
         accept: '.mp4,.avi,.mov',
-        mimeType: 'video/*',
       },
-      link: {
+      Audio: {
+        icon: FaMusic,
+        label: 'Audio',
+        color: '#f59e0b',
+        accept: '.mp3,.wav,.ogg',
+      },
+      Link: {
         icon: FaLink,
-        label: 'External Link',
+        label: 'Link',
+        color: '#06b6d4',
         accept: null,
-        mimeType: null,
+      },
+      Other: {
+        icon: FaFileAlt,
+        label: 'Other',
+        color: '#6b7280',
+        accept: '*',
       },
     }),
     [],
@@ -82,82 +96,35 @@ const ResourcesUpload = ({
 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
-    } else if (formData.title.length > 100) {
-      newErrors.title = 'Title must be less than 100 characters';
     }
 
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
-    } else if (formData.description.length > 500) {
-      newErrors.description = 'Description must be less than 500 characters';
     }
 
-    if (formData.type === 'file') {
-      if (!file && !formData.fileUrl) {
-        newErrors.file = 'Please select a file or provide a file URL';
-      }
-    } else if (formData.type === 'link') {
-      if (!formData.fileUrl) {
-        newErrors.fileUrl = 'Link URL is required';
-      } else if (!isValidUrl(formData.fileUrl)) {
-        newErrors.fileUrl = 'Please enter a valid URL';
-      }
-    }
-
-    if (formData.tags.length === 0) {
-      newErrors.tags = 'At least one tag is required';
+    if (!file && !formData.fileUrl) {
+      newErrors.file = 'Please select a file or provide a URL';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData, file]);
 
-  // URL validation
-  const isValidUrl = (string) => {
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  };
-
   // Handle file selection
   const handleFileChange = useCallback(
     (e) => {
       const selectedFile = e.target.files[0];
       if (selectedFile) {
-        // Validate file size (10MB limit)
         if (selectedFile.size > 10 * 1024 * 1024) {
           notify('File size must be less than 10MB', { type: 'error' });
           return;
         }
-
-        // Validate file type based on category
-        const allowedTypes = fileTypes[formData.category];
-        if (allowedTypes && allowedTypes.accept) {
-          const fileExtension = selectedFile.name
-            .split('.')
-            .pop()
-            .toLowerCase();
-          const allowedExtensions = allowedTypes.accept
-            .split(',')
-            .map((ext) => ext.replace('.', ''));
-
-          if (!allowedExtensions.includes(fileExtension)) {
-            notify(`Please select a valid ${allowedTypes.label} file`, {
-              type: 'error',
-            });
-            return;
-          }
-        }
-
         setFile(selectedFile);
         setFormData((prev) => ({ ...prev, fileUrl: '' }));
-        setErrors((prev) => ({ ...prev, file: null, fileUrl: null }));
+        setErrors((prev) => ({ ...prev, file: null }));
       }
     },
-    [formData.category, fileTypes],
+    [notify],
   );
 
   // Handle form input changes
@@ -171,11 +138,9 @@ const ResourcesUpload = ({
     setFormData((prev) => ({
       ...prev,
       category,
-      type: category === 'link' ? 'link' : 'file',
-      fileUrl: category === 'link' ? prev.fileUrl : '',
     }));
     setFile(null);
-    setErrors((prev) => ({ ...prev, file: null, fileUrl: null }));
+    setErrors((prev) => ({ ...prev, file: null }));
   }, []);
 
   // Handle tag management
@@ -183,7 +148,6 @@ const ResourcesUpload = ({
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       setFormData((prev) => ({ ...prev, tags: [...prev.tags, newTag.trim()] }));
       setNewTag('');
-      setErrors((prev) => ({ ...prev, tags: null }));
     }
   }, [newTag, formData.tags]);
 
@@ -204,70 +168,249 @@ const ResourcesUpload = ({
     [addTag],
   );
 
-  // Simulate file upload (in real app, this would upload to cloud storage)
-  const simulateFileUpload = useCallback(async (file) => {
-    return new Promise((resolve) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 20;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-          // Simulate file URL generation
-          const fileName = file.name.replace(/\s+/g, '-').toLowerCase();
-          resolve(`/uploads/${Date.now()}-${fileName}`);
+  // Handle actual file upload
+  const handleFileUpload = useCallback(
+    async (file) => {
+      try {
+        console.log('📤 Starting file upload for:', file.name);
+
+        // File validation
+        if (!file) {
+          throw new Error('No file selected');
         }
-        setUploadProgress(progress);
-      }, 200);
-    });
-  }, []);
+
+        // File size validation (50MB limit)
+        const maxSize = 50 * 1024 * 1024; // 50MB
+        if (file.size > maxSize) {
+          throw new Error(
+            `File size too large. Maximum size is 50MB. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
+          );
+        }
+
+        // File type validation
+        const allowedTypes = [
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+          'video/mp4',
+          'audio/mpeg',
+          'text/plain',
+        ];
+        if (!allowedTypes.includes(file.type) && !file.name.includes('.')) {
+          throw new Error(
+            `File type not supported. Allowed types: PDF, Images, Videos, Audio, Text files`,
+          );
+        }
+
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
+        uploadFormData.append('title', formData.title || '');
+        uploadFormData.append('description', formData.description || '');
+        uploadFormData.append('category', formData.category || 'PDF');
+        uploadFormData.append('tags', JSON.stringify(formData.tags || []));
+        uploadFormData.append('isPublic', 'true');
+        uploadFormData.append('uploadedBy', 'admin');
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('Authentication required. Please login again.');
+        }
+
+        // Show upload progress
+        setUploadProgress(10);
+
+        const response = await fetch('http://localhost:5000/api/resources', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: uploadFormData,
+        });
+
+        setUploadProgress(50);
+
+        console.log('📡 Upload response status:', response.status);
+        console.log('📡 Upload response headers:', response.headers);
+
+        if (!response.ok) {
+          let errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+
+          try {
+            const errorData = await response.json();
+            if (errorData.error && errorData.error.message) {
+              errorMessage = errorData.error.message;
+            }
+          } catch (parseError) {
+            // If JSON parsing fails, try to get text
+            try {
+              const errorText = await response.text();
+              if (errorText.includes('File too large')) {
+                errorMessage =
+                  'File size too large. Please choose a smaller file.';
+              } else if (errorText.includes('Invalid file type')) {
+                errorMessage =
+                  'File type not supported. Please choose a different file.';
+              } else if (errorText.includes('Authentication')) {
+                errorMessage = 'Authentication failed. Please login again.';
+              }
+            } catch (textError) {
+              // Use default error message
+            }
+          }
+
+          throw new Error(errorMessage);
+        }
+
+        setUploadProgress(90);
+
+        const result = await response.json();
+        console.log('✅ Upload successful:', result);
+
+        if (!result.success) {
+          throw new Error(result.message || 'Upload failed');
+        }
+
+        if (!result.data || !result.data.fileUrl) {
+          throw new Error('Upload successful but file URL not received');
+        }
+
+        setUploadProgress(100);
+
+        return result.data.fileUrl;
+      } catch (error) {
+        console.error('❌ Upload error:', error);
+
+        // Handle specific error types
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          throw new Error(
+            'Network error. Please check your internet connection.',
+          );
+        } else if (error.message.includes('Failed to fetch')) {
+          throw new Error('Server not responding. Please try again later.');
+        } else if (error.message.includes('timeout')) {
+          throw new Error('Upload timeout. Please try again.');
+        }
+
+        throw error;
+      }
+    },
+    [formData],
+  );
 
   // Handle form submission
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
+      console.log('🔍 Form submission started');
 
       if (!validateForm()) {
+        console.log('❌ Form validation failed');
         notify('Please fix the errors in the form', { type: 'error' });
         return;
       }
 
       setIsUploading(true);
+      setIsSubmitting(true);
       setUploadProgress(0);
+      console.log('📤 Starting upload process...');
 
       try {
         await measurePerformance('Resource Upload', async () => {
-          let finalFileUrl = formData.fileUrl;
+          if (file) {
+            console.log('📁 File upload for:', file.name);
+            // File upload is handled directly in handleFileUpload
+            const fileUrl = await handleFileUpload(file);
+            console.log('✅ File uploaded successfully');
 
-          // Handle file upload if file is selected
-          if (file && formData.type === 'file') {
-            finalFileUrl = await simulateFileUpload(file);
+            // Create resource data for the uploaded file
+            const resourceData = {
+              title: formData.title,
+              description: formData.description,
+              category: formData.category,
+              fileUrl: fileUrl,
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+              tags: formData.tags,
+              isPublic: true,
+              uploadedBy: 'admin',
+            };
+
+            // Save the resource using the onSave function
+            const saveResult = await onSave(resourceData);
+            console.log('✅ Resource saved successfully:', saveResult);
+
+            // Only close modal if save was successful
+            if (saveResult && saveResult.success) {
+              notify('Resource uploaded and saved successfully!', {
+                type: 'success',
+              });
+              onCancel();
+            } else {
+              throw new Error('Failed to save resource to database');
+            }
+          } else if (formData.fileUrl) {
+            // For URL-based resources
+            const resourceData = {
+              ...formData,
+              uploadedBy: 'admin',
+              isPublic: true,
+            };
+
+            if (initialData?.id) {
+              resourceData.id = initialData.id;
+              resourceData.createdAt = initialData.createdAt;
+              resourceData.downloadCount = initialData.downloadCount;
+              console.log('📝 Editing existing resource:', initialData.id);
+            } else {
+              console.log('➕ Creating new resource');
+            }
+
+            console.log('📦 Final resource data:', resourceData);
+            const saveResult = await onSave(resourceData);
+            console.log('✅ Resource saved successfully:', saveResult);
+
+            // Only close modal if save was successful
+            if (saveResult && saveResult.success) {
+              notify('Resource saved successfully!', { type: 'success' });
+              onCancel();
+            } else {
+              throw new Error('Failed to save resource to database');
+            }
+          } else {
+            throw new Error('Either file upload or file URL is required');
           }
-
-          const resourceData = {
-            ...formData,
-            fileUrl: finalFileUrl,
-            originalFileName: file ? file.name : null,
-            fileSize: file ? file.size : null,
-            mimeType: file ? file.type : null,
-            uploadedBy: 'admin', // In real app, get from user context
-            isPublic: true,
-          };
-
-          if (initialData?.id) {
-            resourceData.id = initialData.id;
-            resourceData.createdAt = initialData.createdAt;
-            resourceData.downloadCount = initialData.downloadCount;
-          }
-
-          await onSave(resourceData);
-          onCancel();
         });
       } catch (error) {
+        console.error('❌ Upload error:', error);
         logError(error, 'ResourcesUpload:handleSubmit', ERROR_SEVERITY.MEDIUM);
-        notify('Failed to save resource. Please try again.', { type: 'error' });
+
+        // Show specific error messages to user
+        let userMessage = 'Failed to save resource. Please try again.';
+
+        if (error.message.includes('Authentication')) {
+          userMessage = 'Authentication failed. Please login again.';
+        } else if (error.message.includes('File size too large')) {
+          userMessage = 'File size too large. Please choose a smaller file.';
+        } else if (error.message.includes('File type not supported')) {
+          userMessage =
+            'File type not supported. Please choose a different file.';
+        } else if (error.message.includes('Network error')) {
+          userMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message.includes('Server not responding')) {
+          userMessage = 'Server not responding. Please try again later.';
+        } else if (error.message.includes('timeout')) {
+          userMessage = 'Upload timeout. Please try again.';
+        } else if (error.message.includes('file URL not received')) {
+          userMessage =
+            'Upload completed but file processing failed. Please try again.';
+        }
+
+        notify(userMessage, { type: 'error' });
       } finally {
         setIsUploading(false);
+        setIsSubmitting(false);
         setUploadProgress(0);
       }
     },
@@ -275,104 +418,115 @@ const ResourcesUpload = ({
       formData,
       file,
       validateForm,
-      simulateFileUpload,
+      handleFileUpload,
       onSave,
       onCancel,
       initialData,
+      notify,
     ],
   );
 
-  // Get current file type configuration
   const currentFileType = fileTypes[formData.category];
 
   return (
-    <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto'>
-      <div className='flex items-center justify-between mb-6'>
-        <h2 className='text-2xl font-bold text-gray-800'>
-          {initialData ? 'Edit Resource' : 'Upload New Resource'}
-        </h2>
-        <button
-          onClick={onCancel}
-          className='text-gray-500 hover:text-gray-700 transition-colors'
-        >
+    <div className='learning-resources-form'>
+      {/* Header */}
+      <div className='learning-resources-header'>
+        <div className='flex items-center gap-4'>
+          <div className='w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center'>
+            <FaBook className='text-white text-xl' />
+          </div>
+          <div>
+            <h2 className='learning-resources-title'>
+              {initialData ? 'Edit Resource' : 'Add New Resource'}
+            </h2>
+            <p className='text-sm text-gray-500 mt-1'>
+              Share Islamic knowledge and educational materials
+            </p>
+          </div>
+        </div>
+        <button onClick={onCancel} className='learning-resources-close'>
           <FaTimes size={20} />
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className='space-y-6'>
+      <form onSubmit={handleSubmit}>
         {/* Title */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700 mb-2'>
-            Title *
-          </label>
+        <div className='form-field-group'>
+          <label className='form-field-label required'>Resource Title</label>
           <input
             type='text'
             value={formData.title}
             onChange={(e) => handleInputChange('title', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.title ? 'border-red-500' : 'border-gray-300'
+            className={`learning-resources-input ${
+              errors.title ? 'error' : ''
             }`}
-            placeholder='Enter resource title'
+            placeholder='Enter a descriptive title for your resource'
             maxLength={100}
           />
-          {errors.title && (
-            <p className='text-red-500 text-sm mt-1'>{errors.title}</p>
-          )}
+          {errors.title && <p className='error-message'>{errors.title}</p>}
         </div>
 
         {/* Description */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700 mb-2'>
-            Description *
-          </label>
+        <div className='form-field-group'>
+          <label className='form-field-label required'>Description</label>
           <textarea
             value={formData.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.description ? 'border-red-500' : 'border-gray-300'
+            className={`learning-resources-textarea ${
+              errors.description ? 'error' : ''
             }`}
-            placeholder='Enter resource description'
+            placeholder='Briefly describe what this resource contains'
             rows={3}
-            maxLength={500}
+            maxLength={300}
           />
           {errors.description && (
-            <p className='text-red-500 text-sm mt-1'>{errors.description}</p>
+            <p className='error-message'>{errors.description}</p>
           )}
         </div>
 
         {/* Category Selection */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700 mb-2'>
-            Category *
-          </label>
-          <div className='grid grid-cols-2 md:grid-cols-5 gap-3'>
+        <div className='form-field-group'>
+          <label className='form-field-label required'>Category</label>
+          <div className='category-grid'>
             {Object.entries(fileTypes).map(([key, config]) => (
               <button
                 key={key}
                 type='button'
                 onClick={() => handleCategoryChange(key)}
-                className={`flex flex-col items-center p-3 border rounded-lg transition-all ${
-                  formData.category === key
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                className={`category-button ${
+                  formData.category === key ? 'selected' : ''
                 }`}
+                style={{
+                  '--category-color': config.color,
+                }}
               >
-                <config.icon size={20} className='mb-1' />
-                <span className='text-xs text-center'>{config.label}</span>
+                <config.icon size={20} className='icon' />
+                <span>{config.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* File Upload or Link Input */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700 mb-2'>
-            {formData.type === 'file' ? 'File Upload' : 'Link URL'} *
+        {/* File Upload */}
+        <div className='form-field-group'>
+          <label className='form-field-label required'>
+            {formData.category === 'Link' ? 'Resource URL' : 'Upload File'}
           </label>
 
-          {formData.type === 'file' ? (
-            <div className='space-y-3'>
-              <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors'>
+          {formData.category === 'Link' ? (
+            <input
+              type='url'
+              value={formData.fileUrl}
+              onChange={(e) => handleInputChange('fileUrl', e.target.value)}
+              className={`learning-resources-input ${
+                errors.fileUrl ? 'error' : ''
+              }`}
+              placeholder='https://example.com/resource'
+            />
+          ) : (
+            <div className='space-y-4'>
+              <div className='file-upload-area'>
                 <input
                   type='file'
                   onChange={handleFileChange}
@@ -381,39 +535,40 @@ const ResourcesUpload = ({
                   id='file-upload'
                 />
                 <label htmlFor='file-upload' className='cursor-pointer'>
-                  <FaUpload size={24} className='mx-auto mb-2 text-gray-400' />
-                  <p className='text-sm text-gray-600'>
+                  <FaUpload size={32} className='file-upload-icon' />
+                  <p className='file-upload-text'>
                     Click to upload or drag and drop
                   </p>
-                  <p className='text-xs text-gray-500 mt-1'>
+                  <p className='file-upload-hint'>
                     {currentFileType?.accept} (Max 10MB)
                   </p>
                 </label>
               </div>
 
               {file && (
-                <div className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
-                  <div className='flex items-center space-x-3'>
-                    <currentFileType.icon size={20} className='text-blue-500' />
-                    <div>
-                      <p className='text-sm font-medium'>{file.name}</p>
-                      <p className='text-xs text-gray-500'>
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
+                <div className='file-preview'>
+                  <div className='file-preview-info'>
+                    <currentFileType.icon
+                      size={20}
+                      className='file-preview-icon'
+                    />
+                    <div className='file-preview-details'>
+                      <h4>{file.name}</h4>
+                      <p>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
                   </div>
                   <button
                     type='button'
                     onClick={() => setFile(null)}
-                    className='text-red-500 hover:text-red-700'
+                    className='file-preview-remove'
                   >
                     <FaTimes size={16} />
                   </button>
                 </div>
               )}
 
-              {/* Alternative: Direct URL input */}
-              <div className='mt-3'>
+              {/* Alternative URL input */}
+              <div className='mt-4'>
                 <p className='text-sm text-gray-600 mb-2'>
                   Or provide a direct file URL:
                 </p>
@@ -421,67 +576,50 @@ const ResourcesUpload = ({
                   type='url'
                   value={formData.fileUrl}
                   onChange={(e) => handleInputChange('fileUrl', e.target.value)}
-                  className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  className='learning-resources-input'
                   placeholder='https://example.com/file.pdf'
                 />
               </div>
             </div>
-          ) : (
-            <input
-              type='url'
-              value={formData.fileUrl}
-              onChange={(e) => handleInputChange('fileUrl', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.fileUrl ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder='https://example.com/resource'
-            />
           )}
 
           {(errors.file || errors.fileUrl) && (
-            <p className='text-red-500 text-sm mt-1'>
-              {errors.file || errors.fileUrl}
-            </p>
+            <p className='error-message'>{errors.file || errors.fileUrl}</p>
           )}
         </div>
 
         {/* Tags */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700 mb-2'>
-            Tags *
-          </label>
-          <div className='space-y-3'>
-            <div className='flex space-x-2'>
+        <div className='form-field-group'>
+          <label className='form-field-label'>Tags (Optional)</label>
+          <div className='tags-section'>
+            <div className='tags-input-group'>
               <input
                 type='text'
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyPress={handleTagKeyPress}
-                className='flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-                placeholder='Add a tag and press Enter'
+                className='tags-input'
+                placeholder='Add tags to help others find this resource'
               />
               <button
                 type='button'
                 onClick={addTag}
-                className='px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors'
+                className='tags-add-button'
               >
                 Add
               </button>
             </div>
 
             {formData.tags.length > 0 && (
-              <div className='flex flex-wrap gap-2'>
+              <div className='tags-list'>
                 {formData.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className='inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full'
-                  >
-                    <FaTags size={12} className='mr-1' />
+                  <span key={index} className='tag-item'>
+                    <FaTags size={12} />
                     {tag}
                     <button
                       type='button'
                       onClick={() => removeTag(tag)}
-                      className='ml-2 text-blue-600 hover:text-blue-800'
+                      className='tag-remove'
                     >
                       <FaTimes size={10} />
                     </button>
@@ -489,23 +627,19 @@ const ResourcesUpload = ({
                 ))}
               </div>
             )}
-
-            {errors.tags && (
-              <p className='text-red-500 text-sm'>{errors.tags}</p>
-            )}
           </div>
         </div>
 
         {/* Upload Progress */}
         {isUploading && (
-          <div className='space-y-2'>
-            <div className='flex justify-between text-sm text-gray-600'>
+          <div className='upload-progress'>
+            <div className='progress-header'>
               <span>Uploading...</span>
               <span>{Math.round(uploadProgress)}%</span>
             </div>
-            <div className='w-full bg-gray-200 rounded-full h-2'>
+            <div className='progress-bar'>
               <div
-                className='bg-blue-500 h-2 rounded-full transition-all duration-300'
+                className='progress-fill'
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
@@ -513,25 +647,27 @@ const ResourcesUpload = ({
         )}
 
         {/* Action Buttons */}
-        <div className='flex justify-end space-x-3 pt-4'>
+        <div className='form-actions'>
           <button
             type='button'
             onClick={onCancel}
-            className='px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors'
+            className='cancel-button'
             disabled={isUploading}
           >
             Cancel
           </button>
           <button
             type='submit'
-            className='px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-            disabled={isUploading}
+            className='submit-button'
+            disabled={isUploading || isSubmitting}
           >
             {isUploading
               ? 'Uploading...'
-              : initialData
-                ? 'Update Resource'
-                : 'Upload Resource'}
+              : isSubmitting
+                ? 'Saving...'
+                : initialData
+                  ? 'Update Resource'
+                  : 'Upload Resource'}
           </button>
         </div>
       </form>

@@ -1,0 +1,492 @@
+/* Custom Filters Styles */
+.custom-filters {
+  position: relative;
+  display: inline-block;
+}
+
+/* Filter Toggle Button */
+.filter-toggle-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.filter-toggle-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.filter-badge {
+  background: #ff4757;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Filter Panel */
+.filter-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 350px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  margin-top: 8px;
+  border: 1px solid #e1e8ed;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Filter Header */
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e1e8ed;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+.filter-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+/* Filter Content */
+.filter-content {
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.filter-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.filter-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.filter-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Filter Sections */
+.filter-section {
+  margin-bottom: 24px;
+}
+
+.filter-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Date Inputs */
+.date-inputs {
+  display: flex;
+  gap: 12px;
+}
+
+.date-input {
+  flex: 1;
+}
+
+.date-input label {
+  display: block;
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 4px;
+}
+
+.date-input input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.date-input input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Checkbox Groups */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 14px;
+  color: #495057;
+  transition: color 0.2s ease;
+}
+
+.checkbox-item:hover {
+  color: #667eea;
+}
+
+.checkbox-item input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #667eea;
+}
+
+/* Radio Groups */
+.radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #495057;
+}
+
+.radio-item input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #667eea;
+}
+
+/* Priority Colors */
+.priority-critical {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.priority-important {
+  color: #fd7e14;
+  font-weight: 600;
+}
+
+.priority-regular {
+  color: #28a745;
+  font-weight: 600;
+}
+
+/* Filter Actions */
+.filter-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #e1e8ed;
+  margin-top: 20px;
+}
+
+.clear-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.clear-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Save Filter */
+.save-filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.save-filter input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 120px;
+}
+
+.save-filter input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.save-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+/* Saved Filters */
+.saved-filters {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e1e8ed;
+}
+
+.saved-filters h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.saved-filters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved-filter-btn {
+  background: #e9ecef;
+  color: #495057;
+  border: 1px solid #ced4da;
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.saved-filter-btn:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  transform: translateY(-1px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .filter-panel {
+    width: 300px;
+    right: -50px;
+  }
+
+  .date-inputs {
+    flex-direction: column;
+  }
+
+  .radio-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filter-actions {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .save-filter {
+    justify-content: space-between;
+  }
+
+  .save-filter input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-panel {
+    width: 280px;
+    right: -80px;
+  }
+
+  .filter-content {
+    padding: 16px;
+  }
+
+  .checkbox-group {
+    max-height: 120px;
+  }
+}
+
+/* Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+  .filter-panel {
+    background: #2c3e50;
+    border-color: #34495e;
+  }
+
+  .filter-header {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    border-bottom-color: #34495e;
+  }
+
+  .filter-header h3 {
+    color: #ecf0f1;
+  }
+
+  .filter-section h4 {
+    color: #bdc3c7;
+  }
+
+  .checkbox-item,
+  .radio-item {
+    color: #bdc3c7;
+  }
+
+  .date-input input,
+  .save-filter input {
+    background: #34495e;
+    border-color: #7f8c8d;
+    color: #ecf0f1;
+  }
+
+  .saved-filter-btn {
+    background: #34495e;
+    color: #bdc3c7;
+    border-color: #7f8c8d;
+  }
+
+  .filter-content::-webkit-scrollbar-track {
+    background: #34495e;
+  }
+
+  .filter-content::-webkit-scrollbar-thumb {
+    background: #7f8c8d;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .filter-panel {
+    border: 2px solid #000;
+  }
+
+  .filter-toggle-btn {
+    border: 2px solid #000;
+  }
+
+  .checkbox-item input[type='checkbox'],
+  .radio-item input[type='radio'] {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .filter-panel {
+    animation: none;
+  }
+
+  .filter-toggle-btn:hover,
+  .clear-btn:hover,
+  .save-btn:hover,
+  .saved-filter-btn:hover {
+    transform: none;
+  }
+
+  .filter-badge {
+    animation: none;
+  }
+}

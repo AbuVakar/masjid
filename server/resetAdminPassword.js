@@ -32,7 +32,7 @@ const resetAdminPassword = async (newPassword = null) => {
     console.log('✅ Admin user found');
     console.log('Username: admin');
     console.log('Role:', existingAdmin.role);
-    console.log('Email: admin@masjid.com');
+    console.log('Email: bakrabu786@gmail.com');
 
     // Use provided password or generate secure password
     const adminPassword = newPassword || generateSecurePassword();
@@ -47,7 +47,7 @@ const resetAdminPassword = async (newPassword = null) => {
     console.log('Username: admin');
     console.log('New Password:', adminPassword);
     console.log('Role: admin');
-    console.log('Email: admin@masjid.com');
+    console.log('Email: bakrabu786@gmail.com');
     console.log('⚠️  IMPORTANT: Save this new password securely!');
 
     process.exit(0);

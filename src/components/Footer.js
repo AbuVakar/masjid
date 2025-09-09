@@ -6,7 +6,7 @@ function Footer() {
     <footer className='app-footer'>
       <div className='footer-content'>
         &copy; {new Date().getFullYear()} All Rights Reserved - Madina Masjid
-        Badarkha
+        Badarkha <br></br> Made with ❣️ by Md. Abu Bakr
       </div>
     </footer>
   );

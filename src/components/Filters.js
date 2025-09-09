@@ -8,10 +8,11 @@ const Filters = ({
   onReset,
   onExportExcel,
   onExportPDF,
-  onOpenNotifyPrefs,
   L,
   streets = [],
+  occupations = [],
   isAdmin = false,
+  isGuest = false,
 }) => {
   const handleFilterChange = (name, value) => {
     console.log(`Filter changed: ${name} = "${value}"`);
@@ -81,16 +82,11 @@ const Filters = ({
             onChange={(e) => handleFilterChange('occupation', e.target.value)}
           >
             <option value=''>{L.occupationAll || 'Occupation (All)'}</option>
-            <option value='Child'>Child</option>
-            <option value='Student'>Student</option>
-            <option value='Farmer'>Farmer</option>
-            <option value='Businessman'>Businessman</option>
-            <option value='Other'>Other</option>
-            <option value='Free'>Free</option>
-            <option value='Shopkeeper'>Shopkeeper</option>
-            <option value='Worker'>Worker</option>
-            <option value='Ulma'>Ulma</option>
-            <option value='Hafiz'>Hafiz</option>
+            {occupations.map((occupation) => (
+              <option key={occupation} value={occupation}>
+                {occupation}
+              </option>
+            ))}
           </select>
 
           <select
@@ -284,22 +280,7 @@ const Filters = ({
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              id='btnNotifyPrefs'
-              className='ghost'
-              onClick={onOpenNotifyPrefs}
-              style={{
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              🔔 Notification Preferences
-            </button>
+            {/* Notification Preferences moved to User Profile */}
           </div>
         </div>
       </div>

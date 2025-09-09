@@ -152,17 +152,14 @@ const rules = {
     return true;
   },
   password: (value) => {
-    if (!value || typeof value !== 'string' || value.length < 8) {
-      return 'Password is required and must be at least 8 characters long.';
+    if (!value || typeof value !== 'string' || value.length < 6) {
+      return 'Password is required and must be at least 6 characters long.';
     }
     return true;
   },
   passwordComplex: (value) => {
-    if (!value || typeof value !== 'string' || value.length < 8) {
-      return 'Password is required and must be at least 8 characters long.';
-    }
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value)) {
-      return 'Password must contain at least one uppercase letter, one lowercase letter, and one number.';
+    if (!value || typeof value !== 'string' || value.length < 6) {
+      return 'Password is required and must be at least 6 characters long.';
     }
     return true;
   },

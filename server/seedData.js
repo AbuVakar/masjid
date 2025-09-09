@@ -4,6 +4,7 @@ require('dotenv').config({ path: './config.env' });
 // Import models
 const House = require('./models/House');
 const Resource = require('./models/Resource');
+const seedInfoData = require('./seedInfoData');
 
 // Enhanced demo data with more comprehensive test data
 const demoHouses = [
@@ -924,15 +925,14 @@ const connectDB = async () => {
   }
 };
 
-// Seed data function
-const seedData = async () => {
+// Clear and seed data function
+const clearAndSeedData = async () => {
   try {
-    console.log('🌱 Starting to seed data...');
+    console.log('🌱 Starting to clear and seed data...');
 
-    // Clear existing data
-    await House.deleteMany({});
-    await Resource.deleteMany({});
-    console.log('🗑️ Cleared existing data');
+    // Drop the entire database (more thorough than deleteMany)
+    await mongoose.connection.dropDatabase();
+    console.log('🗑️ Dropped entire database');
 
     // Insert houses
     const savedHouses = await House.insertMany(demoHouses);
@@ -941,6 +941,9 @@ const seedData = async () => {
     // Insert resources
     const savedResources = await Resource.insertMany(demoResources);
     console.log(`📚 Inserted ${savedResources.length} resources`);
+
+    // Seed InfoData
+    await seedInfoData();
 
     console.log('✅ Data seeding completed successfully!');
     console.log(`📊 Total Houses: ${savedHouses.length}`);
@@ -962,5 +965,5 @@ const seedData = async () => {
 
 // Run the seeding
 connectDB().then(() => {
-  seedData();
+  clearAndSeedData();
 });

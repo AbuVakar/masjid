@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const House = require('../models/House');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const { authenticateToken, optionalAuth } = require('../middleware/auth');
+const {
+  authenticateToken,
+  optionalAuth,
+  requireAdmin,
+} = require('../middleware/auth');
 const { checkResourceExists } = require('../middleware/resource');
 const {
   validateHouse,
@@ -10,6 +14,7 @@ const {
   validatePagination,
   validateSearch,
 } = require('../middleware/validator');
+const { logActivity } = require('../utils/activityLogger');
 
 // @desc    Get all houses
 // @route   GET /api/houses
@@ -78,6 +83,7 @@ const checkDuplicateHouseNumber = async (number, excludeId = null) => {
 router.post(
   '/',
   authenticateToken,
+  requireAdmin,
   validateHouse,
   asyncHandler(async (req, res) => {
     const { number, street, members, taleem, mashwara, notes } = req.body;
@@ -94,6 +100,16 @@ router.post(
     });
 
     const savedHouse = await house.save();
+
+    // Log activity
+    await logActivity(
+      req.user.username || 'Admin',
+      req.user.role || 'admin',
+      `Created House #${number} on ${street}`,
+      `House created with ${members?.length || 0} members`,
+      req,
+    );
+
     res.status(201).json({
       success: true,
       message: 'House created successfully',
@@ -108,6 +124,7 @@ router.post(
 router.put(
   '/:id',
   authenticateToken,
+  requireAdmin,
   checkResourceExists(House, 'House'),
   validateHouse,
   asyncHandler(async (req, res) => {
@@ -137,9 +154,23 @@ router.put(
 router.delete(
   '/:id',
   authenticateToken,
+  requireAdmin,
   checkResourceExists(House, 'House'),
   asyncHandler(async (req, res) => {
+    // Get house details before deletion for logging
+    const house = await House.findById(req.params.id);
+
     await House.findByIdAndDelete(req.params.id);
+
+    // Log activity
+    await logActivity(
+      req.user.username || 'Admin',
+      req.user.role || 'admin',
+      `Deleted House #${house.number} on ${house.street}`,
+      `House had ${house.members?.length || 0} members`,
+      req,
+    );
+
     res.json({
       success: true,
       message: 'House deleted successfully',
@@ -182,6 +213,7 @@ router.post(
 router.post(
   '/:id/members',
   authenticateToken,
+  requireAdmin,
   checkResourceExists(House, 'House'),
   validateMember,
   asyncHandler(async (req, res) => {
@@ -193,6 +225,16 @@ router.post(
 
     req.resource.members.push(memberData);
     const savedHouse = await req.resource.save();
+
+    // Log activity
+    await logActivity(
+      req.user.username || 'Admin',
+      req.user.role || 'admin',
+      `Added member "${memberData.name}" to House #${req.resource.number}`,
+      `Member: ${memberData.name}, Age: ${memberData.age}, Gender: ${memberData.gender}, Occupation: ${memberData.occupation}`,
+      req,
+    );
+
     res.status(201).json({
       success: true,
       message: 'Member added successfully',
@@ -207,6 +249,7 @@ router.post(
 router.put(
   '/:id/members/:memberId',
   authenticateToken,
+  requireAdmin,
   checkResourceExists(House, 'House'),
   validateMember,
   asyncHandler(async (req, res) => {
@@ -254,6 +297,16 @@ router.put(
     }
 
     const updatedHouse = await House.findById(req.params.id);
+
+    // Log activity
+    await logActivity(
+      req.user.username || 'Admin',
+      req.user.role || 'admin',
+      `Updated member "${name}" in House #${updatedHouse.number}`,
+      `Member: ${name}, Age: ${age}, Gender: ${gender}, Occupation: ${occupation}`,
+      req,
+    );
+
     res.json({
       success: true,
       message: 'Member updated successfully',
@@ -268,12 +321,23 @@ router.put(
 router.delete(
   '/:id/members/:memberId',
   authenticateToken,
+  requireAdmin,
   checkResourceExists(House, 'House'),
   asyncHandler(async (req, res) => {
     console.log('🔍 DELETE member route called with:', {
       houseId: req.params.id,
       memberId: req.params.memberId,
     });
+
+    // Get member details before deletion for logging
+    const house = await House.findById(req.params.id);
+    const memberToDelete = house.members.find(
+      (m) => m._id.toString() === req.params.memberId,
+    );
+
+    if (!memberToDelete) {
+      throw new AppError('Member not found', 404, 'MEMBER_NOT_FOUND');
+    }
 
     const result = await House.updateOne(
       { _id: req.params.id },
@@ -291,6 +355,15 @@ router.delete(
     console.log(
       '✅ Member deleted successfully, updated house:',
       updatedHouse._id,
+    );
+
+    // Log activity
+    await logActivity(
+      req.user.username || 'Admin',
+      req.user.role || 'admin',
+      `Deleted member "${memberToDelete.name}" from House #${house.number}`,
+      `Member: ${memberToDelete.name}, Age: ${memberToDelete.age}, Gender: ${memberToDelete.gender}`,
+      req,
     );
 
     res.json({

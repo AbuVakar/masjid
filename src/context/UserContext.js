@@ -11,31 +11,43 @@ export const UserProvider = ({ children }) => {
   const [isGuest, setIsGuest] = useState(false);
 
   const verifyUser = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      try {
-        apiService.setToken(token);
-        const response = await apiService.getProfile();
-        if (response.success && response.data) {
-          setUser(response.data);
-          setIsAuthenticated(true);
-          setIsAdmin(response.data.role === 'admin');
-        } else {
-          throw new Error('Profile fetch failed');
+    // Check if user is already authenticated via server session
+    try {
+      console.log('UserContext - Verifying user...');
+      console.log(
+        'UserContext - Current token:',
+        apiService.getToken() ? 'EXISTS' : 'MISSING',
+      );
+
+      const response = await apiService.getProfile();
+      if (response.success && response.data) {
+        console.log('UserContext - User verified successfully');
+        setUser(response.data);
+        setIsAuthenticated(true);
+        setIsAdmin(response.data.role === 'admin');
+        if (response.data.token) {
+          apiService.setToken(response.data.token);
         }
-      } catch (error) {
-        localStorage.removeItem('accessToken');
-        apiService.setToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
+      } else {
+        throw new Error('Profile fetch failed');
       }
+    } catch (error) {
+      console.log('UserContext - User verification failed:', error.message);
+      apiService.setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsAdmin(false);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    verifyUser();
+    // Add a small delay to ensure server is ready
+    const timer = setTimeout(() => {
+      verifyUser();
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [verifyUser]);
 
   const login = async (credentials) => {
@@ -43,7 +55,6 @@ export const UserProvider = ({ children }) => {
       const response = await apiService.login(credentials);
       if (response.success && response.data) {
         const { token, user: userData } = response.data;
-        localStorage.setItem('accessToken', token);
         apiService.setToken(token);
         setUser(userData);
         setIsAuthenticated(true);
@@ -54,7 +65,6 @@ export const UserProvider = ({ children }) => {
     } catch (error) {
       console.error('Login error:', error);
       // Clear any partial state
-      localStorage.removeItem('accessToken');
       apiService.setToken(null);
       setUser(null);
       setIsAuthenticated(false);
@@ -68,7 +78,6 @@ export const UserProvider = ({ children }) => {
       const response = await apiService.register(userData);
       if (response.success && response.data) {
         const { token, user: newUser } = response.data;
-        localStorage.setItem('accessToken', token);
         apiService.setToken(token);
         setUser(newUser);
         setIsAuthenticated(true);
@@ -79,7 +88,6 @@ export const UserProvider = ({ children }) => {
     } catch (error) {
       console.error('Registration error:', error);
       // Clear any partial state
-      localStorage.removeItem('accessToken');
       apiService.setToken(null);
       setUser(null);
       setIsAuthenticated(false);
@@ -89,7 +97,6 @@ export const UserProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('accessToken');
     apiService.setToken(null);
     setUser(null);
     setIsAuthenticated(false);
@@ -99,6 +106,14 @@ export const UserProvider = ({ children }) => {
 
   const enableGuestMode = () => {
     setIsGuest(true);
+  };
+
+  const updateUser = (updatedUserData) => {
+    console.log('UserContext - updateUser called with:', updatedUserData);
+    console.log('UserContext - New preferences:', updatedUserData?.preferences);
+    setUser(updatedUserData);
+    setIsAdmin(updatedUserData.role === 'admin');
+    console.log('UserContext - User state updated');
   };
 
   const value = {
@@ -111,6 +126,7 @@ export const UserProvider = ({ children }) => {
     logout,
     register,
     enableGuestMode,
+    updateUser,
     refreshUser: verifyUser,
   };
 

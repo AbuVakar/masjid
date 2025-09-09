@@ -17,15 +17,29 @@ import {
   ERROR_SEVERITY,
 } from '../utils/errorHandler';
 import { exportToExcel, exportToPDF } from '../utils/exportUtils';
+import PDFExportOptions from '../components/PDFExportOptions';
+import ExcelExportOptions from '../components/ExcelExportOptions';
 
 const HomePage = ({ openModal }) => {
   const [expandedHouse, setExpandedHouse] = useState(null);
   const [operationLoading, setOperationLoading] = useState(false);
+  const [showPDFOptions, setShowPDFOptions] = useState(false);
+  const [showExcelOptions, setShowExcelOptions] = useState(false);
+
+  // Debug modal state
+  console.log('HomePage - showExcelOptions:', showExcelOptions);
+  console.log('HomePage - showPDFOptions:', showPDFOptions);
 
   const { houses, loading, deleteHouse, deleteMember } = useHouses();
   const { isAdmin, isGuest, isAuthenticated } = useUser();
-  const { filters, setFilters, filteredHouses, resetFilters, streets } =
-    useFilters(houses);
+  const {
+    filters,
+    setFilters,
+    filteredHouses,
+    resetFilters,
+    streets,
+    occupations,
+  } = useFilters(houses);
   const { notify } = useNotify();
 
   // Debug data flow
@@ -34,7 +48,13 @@ const HomePage = ({ openModal }) => {
   console.log('HomePage - filteredHouses:', filteredHouses?.length || 0);
 
   const memoizedFilteredHouses = useMemo(() => {
-    return filteredHouses || [];
+    const houses = filteredHouses || [];
+    // Sort houses by house number (ascending)
+    return houses.sort((a, b) => {
+      const numA = parseInt(a.number) || 0;
+      const numB = parseInt(b.number) || 0;
+      return numA - numB;
+    });
   }, [filteredHouses]);
 
   const handleDelete = useCallback(
@@ -83,43 +103,77 @@ const HomePage = ({ openModal }) => {
     [deleteHouse, deleteMember, notify],
   );
 
-  const handleExportExcel = useCallback(async () => {
-    setOperationLoading(true);
-    try {
-      await measurePerformance('Export Excel', async () => {
-        exportToExcel(memoizedFilteredHouses, 'masjid-houses');
-      });
-      notify('Excel file exported successfully!', { type: 'success' });
-    } catch (error) {
-      logError(error, 'Export Excel', ERROR_SEVERITY.MEDIUM);
-      notify('Failed to export Excel file. Please try again.', {
-        type: 'error',
-      });
-    } finally {
-      setOperationLoading(false);
-    }
-  }, [memoizedFilteredHouses, notify]);
+  const handleExportExcel = useCallback(
+    async (options = {}) => {
+      console.log('Export Excel button clicked');
+      console.log('Houses to export:', memoizedFilteredHouses.length);
 
-  const handleExportPDF = useCallback(async () => {
-    console.log('Export PDF button clicked');
-    console.log('Houses to export:', memoizedFilteredHouses.length);
+      setOperationLoading(true);
+      try {
+        await measurePerformance('Export Excel', async () => {
+          exportToExcel(memoizedFilteredHouses, 'masjid-houses', options);
+        });
+        notify('Excel file exported successfully!', { type: 'success' });
+      } catch (error) {
+        console.error('Export Excel error in HomePage:', error);
+        logError(error, 'Export Excel', ERROR_SEVERITY.MEDIUM);
+        notify('Failed to export Excel file. Please try again.', {
+          type: 'error',
+        });
+      } finally {
+        setOperationLoading(false);
+      }
+    },
+    [memoizedFilteredHouses, notify],
+  );
 
-    setOperationLoading(true);
-    try {
-      await measurePerformance('Export PDF', async () => {
-        exportToPDF(memoizedFilteredHouses, 'masjid-houses');
-      });
-      notify('PDF file exported successfully!', { type: 'success' });
-    } catch (error) {
-      console.error('Export PDF error in HomePage:', error);
-      logError(error, 'Export PDF', ERROR_SEVERITY.MEDIUM);
-      notify('Failed to export PDF file. Please try again.', {
-        type: 'error',
-      });
-    } finally {
-      setOperationLoading(false);
-    }
-  }, [memoizedFilteredHouses, notify]);
+  const handleExportPDF = useCallback(
+    async (options = {}) => {
+      console.log('Export PDF button clicked');
+      console.log('Houses to export:', memoizedFilteredHouses.length);
+
+      setOperationLoading(true);
+      try {
+        await measurePerformance('Export PDF', async () => {
+          exportToPDF(memoizedFilteredHouses, 'masjid-houses', options);
+        });
+        notify('PDF file exported successfully!', { type: 'success' });
+      } catch (error) {
+        console.error('Export PDF error in HomePage:', error);
+        logError(error, 'Export PDF', ERROR_SEVERITY.MEDIUM);
+        notify('Failed to export PDF file. Please try again.', {
+          type: 'error',
+        });
+      } finally {
+        setOperationLoading(false);
+      }
+    },
+    [memoizedFilteredHouses, notify],
+  );
+
+  const handlePDFOptionsExport = useCallback(
+    (options) => {
+      console.log(
+        'HomePage - handlePDFOptionsExport called with options:',
+        options,
+      );
+      setShowPDFOptions(false);
+      handleExportPDF(options);
+    },
+    [handleExportPDF],
+  );
+
+  const handleExcelOptionsExport = useCallback(
+    (options) => {
+      console.log(
+        'HomePage - handleExcelOptionsExport called with options:',
+        options,
+      );
+      setShowExcelOptions(false);
+      handleExportExcel(options);
+    },
+    [handleExportExcel],
+  );
 
   const handleClearFilters = useCallback(() => {
     resetFilters();
@@ -152,12 +206,18 @@ const HomePage = ({ openModal }) => {
           onAddHouse={() => openModal('house')}
           onClearAll={handleClearFilters}
           onReset={resetFilters}
-          onExportExcel={handleExportExcel}
-          onExportPDF={handleExportPDF}
-          onOpenNotifyPrefs={() => openModal('notifications')}
+          onExportExcel={() => {
+            console.log(
+              'Excel export button clicked - setting showExcelOptions to true',
+            );
+            setShowExcelOptions(true);
+          }}
+          onExportPDF={() => setShowPDFOptions(true)}
           onOpenAnalytics={() => openModal('analytics')}
           streets={streets}
+          occupations={occupations}
           isAdmin={isAdmin}
+          isGuest={isGuest}
           L={{}}
         />
       </ErrorBoundary>
@@ -199,6 +259,7 @@ const HomePage = ({ openModal }) => {
             handleDelete(memberId, 'member', houseId)
           }
           isAdmin={isAdmin}
+          isGuest={isGuest}
           loading={operationLoading}
           L={{}}
         />
@@ -214,6 +275,20 @@ const HomePage = ({ openModal }) => {
             </button>
           )}
         </div>
+      )}
+
+      {showPDFOptions && (
+        <PDFExportOptions
+          onExport={handlePDFOptionsExport}
+          onClose={() => setShowPDFOptions(false)}
+        />
+      )}
+
+      {showExcelOptions && (
+        <ExcelExportOptions
+          onExport={handleExcelOptionsExport}
+          onClose={() => setShowExcelOptions(false)}
+        />
       )}
     </>
   );

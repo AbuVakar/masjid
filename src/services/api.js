@@ -2,8 +2,14 @@
 
 class ApiService {
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-    this.token = localStorage.getItem('accessToken') || null;
+    // Use environment variable or detect network for mobile access
+    const apiUrl =
+      process.env.REACT_APP_API_URL ||
+      (window.location.hostname === 'localhost'
+        ? 'http://localhost:5000/api'
+        : `http://${window.location.hostname}:5000/api`);
+    this.baseURL = apiUrl;
+    this.token = null; // No localStorage - token will be managed by server sessions
     this.csrfToken = null;
     this.isOnline = navigator.onLine;
     this.failedRequests = [];
@@ -31,15 +37,12 @@ class ApiService {
   async retryFailedRequests() {
     if (this.failedRequests.length === 0) return;
 
-    console.log(`🔄 Retrying ${this.failedRequests.length} failed requests...`);
-
     const requestsToRetry = [...this.failedRequests];
     this.failedRequests = [];
 
     for (const request of requestsToRetry) {
       try {
         await this.request(request.endpoint, request.options);
-        console.log(`✅ Retry successful for: ${request.endpoint}`);
       } catch (error) {
         console.error(`❌ Retry failed for: ${request.endpoint}`, error);
         // Don't add back to failed requests to prevent infinite loops
@@ -49,11 +52,16 @@ class ApiService {
 
   setToken(token) {
     this.token = token;
+    if (token) {
+      localStorage.setItem('token', token);
+    } else {
+      localStorage.removeItem('token');
+    }
   }
 
   removeToken() {
     this.token = null;
-    localStorage.removeItem('accessToken');
+    localStorage.removeItem('token');
   }
 
   setCSRFToken(token) {
@@ -77,7 +85,60 @@ class ApiService {
   }
 
   getToken() {
+    if (!this.token) {
+      // Try to load from localStorage
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        this.token = storedToken;
+      }
+    }
     return this.token;
+  }
+
+  async refreshToken() {
+    try {
+      const currentToken = this.getToken();
+      if (!currentToken) {
+        console.log('No token to refresh - user needs to login');
+        return null;
+      }
+
+      console.log('Attempting to refresh token...');
+      const response = await fetch(`${this.baseURL}/users/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Token refresh failed:', response.status, errorData);
+
+        // Clear invalid token
+        this.removeToken();
+
+        // For 401: clear token and let UI handle auth state (no hard redirect)
+
+        throw new Error(`Token refresh failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data.token) {
+        this.setToken(data.data.token);
+        console.log('Token refreshed successfully');
+        return data.data.token;
+      } else {
+        throw new Error('Invalid response from token refresh');
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Clear invalid token
+      this.removeToken();
+      throw error;
+    }
   }
 
   // Get authentication headers
@@ -86,8 +147,9 @@ class ApiService {
       'Content-Type': 'application/json',
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     if (this.csrfToken) {
@@ -143,18 +205,67 @@ class ApiService {
             );
           }
 
+          // Handle 401 errors specifically
+          if (response.status === 401) {
+            console.log('401 Unauthorized - Token may be expired');
+            // Don't throw immediately, let the retry logic handle it
+            throw new Error('401 Unauthorized');
+          }
+
           throw new Error(
             errorData.error?.message ||
               `HTTP error! status: ${response.status}`,
           );
         }
 
-        const data = await response.json();
-        return data;
+        // Handle different response types
+        const contentType = response.headers.get('content-type');
+
+        if (options.responseType === 'blob') {
+          return await response.blob();
+        } else if (
+          contentType?.includes('text/csv') ||
+          contentType?.includes('text/plain')
+        ) {
+          return await response.text();
+        } else if (contentType?.includes('application/pdf')) {
+          return await response.blob();
+        } else {
+          const data = await response.json();
+          return data;
+        }
       } catch (error) {
         // Don't retry on client errors (4xx)
         if (error.name === 'AbortError') {
           throw new Error('Request timeout. Please try again.');
+        }
+
+        // Handle 401 errors with token refresh
+        if (
+          (error.message.includes('Access token required') ||
+            error.message.includes('401')) &&
+          attempt === 1
+        ) {
+          try {
+            console.log('Token expired, attempting to refresh...');
+            await this.refreshToken();
+            // Continue to retry with new token
+            continue;
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            throw error; // Re-throw original error
+          }
+        }
+
+        // Don't retry connection refused errors immediately
+        if (
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('ERR_CONNECTION_REFUSED')
+        ) {
+          if (attempt === 1) {
+            // Wait a bit longer for the first retry on connection issues
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
         }
 
         if (attempt === maxRetries) {
@@ -163,7 +274,6 @@ class ApiService {
           // Store failed request for retry when online
           if (!this.isOnline && options.method !== 'GET') {
             this.failedRequests.push({ endpoint, options });
-            console.log(`📝 Stored failed request for retry: ${endpoint}`);
           }
 
           throw error;
@@ -182,22 +292,45 @@ class ApiService {
   }
 
   // GET request
-  async get(endpoint) {
-    return this.request(endpoint, { method: 'GET' });
+  async get(endpoint, options = {}) {
+    return this.request(endpoint, { method: 'GET', ...options });
   }
 
   // POST request
   async post(endpoint, data) {
-    // Add CSRF token to request body for POST requests
-    const requestData = { ...data };
-    if (this.csrfToken) {
-      requestData._csrf = this.csrfToken;
-    }
+    // Validate data before sending
+    if (data && typeof data === 'object') {
+      // Sanitize all string values in the data object
+      const sanitizedData = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (typeof value === 'string') {
+          sanitizedData[key] = value.trim();
+        } else {
+          sanitizedData[key] = value;
+        }
+      }
 
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(requestData),
-    });
+      // Add CSRF token to request body for POST requests
+      if (this.csrfToken) {
+        sanitizedData._csrf = this.csrfToken;
+      }
+
+      return this.request(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(sanitizedData),
+      });
+    } else {
+      // Handle non-object data (like null, undefined, etc.)
+      const requestData = data || {};
+      if (this.csrfToken) {
+        requestData._csrf = this.csrfToken;
+      }
+
+      return this.request(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(requestData),
+      });
+    }
   }
 
   // PUT request
@@ -215,14 +348,35 @@ class ApiService {
   }
 
   // DELETE request
-  async delete(endpoint) {
+  async delete(endpoint, data = null) {
+    let requestConfig = { method: 'DELETE' };
+
+    // If data is provided, add it to the request body
+    if (data) {
+      requestConfig.body = JSON.stringify(data);
+    }
+
     // Add CSRF token to query parameters for DELETE requests
     const separator = endpoint.includes('?') ? '&' : '?';
     const csrfEndpoint = this.csrfToken
       ? `${endpoint}${separator}_csrf=${this.csrfToken}`
       : endpoint;
 
-    return this.request(csrfEndpoint, { method: 'DELETE' });
+    return this.request(csrfEndpoint, requestConfig);
+  }
+
+  // PATCH request
+  async patch(endpoint, data) {
+    // Add CSRF token to request body for PATCH requests
+    const requestData = { ...data };
+    if (this.csrfToken) {
+      requestData._csrf = this.csrfToken;
+    }
+
+    return this.request(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(requestData),
+    });
   }
 
   // House API methods
@@ -240,9 +394,7 @@ class ApiService {
   }
 
   async updateHouse(id, houseData) {
-    console.log('🔍 API updateHouse called with:', { id, houseData });
     const result = await this.put(`/houses/${id}`, houseData);
-    console.log('🔍 API updateHouse result:', result);
     return result;
   }
 
@@ -252,23 +404,15 @@ class ApiService {
 
   // Member API methods
   async addMember(houseId, memberData) {
-    console.log('API addMember called with:', { houseId, memberData });
     return this.post(`/houses/${houseId}/members`, memberData);
   }
 
   async updateMember(houseId, memberId, memberData) {
-    console.log('API updateMember called with:', {
-      houseId,
-      memberId,
-      memberData,
-    });
     return this.put(`/houses/${houseId}/members/${memberId}`, memberData);
   }
 
   async deleteMember(houseId, memberId) {
-    console.log('🔍 API deleteMember called with:', { houseId, memberId });
     const result = await this.delete(`/houses/${houseId}/members/${memberId}`);
-    console.log('🔍 API deleteMember result:', result);
     return result;
   }
 
@@ -306,21 +450,70 @@ class ApiService {
     return this.post(`/resources/${id}/download`);
   }
 
+  async incrementDownloadCount(id) {
+    return this.post(`/resources/${id}/download`);
+  }
+
+  async exportResources() {
+    return this.get('/resources/export');
+  }
+
   // User API methods
   async register(userData) {
-    const response = await this.post('/users/register', userData);
+    // Validate user data before sending
+    if (!userData || typeof userData !== 'object') {
+      throw new Error('Invalid user data format');
+    }
+
+    if (!userData.username || !userData.password || !userData.email) {
+      throw new Error('Username, password, and email are required');
+    }
+
+    // Sanitize user data
+    const sanitizedUserData = {
+      username: String(userData.username).trim(),
+      password: String(userData.password),
+      email: String(userData.email).trim().toLowerCase(),
+      name: userData.name ? String(userData.name).trim() : '',
+    };
+
+    console.log(
+      '🔍 Registration attempt with username:',
+      sanitizedUserData.username,
+    );
+
+    const response = await this.post('/users/register', sanitizedUserData);
     if (response.success && response.data.token) {
       this.setToken(response.data.token);
-      localStorage.setItem('accessToken', response.data.token);
+      // No localStorage - token managed by server sessions
     }
     return response;
   }
 
   async login(credentials) {
-    const response = await this.post('/users/login', credentials);
+    // Validate credentials before sending
+    if (!credentials) {
+      throw new Error('Credentials are required');
+    }
+
+    if (typeof credentials !== 'object') {
+      throw new Error('Credentials must be an object');
+    }
+
+    if (!credentials.username || !credentials.password) {
+      throw new Error('Username and password are required');
+    }
+
+    // Sanitize credentials
+    const sanitizedCredentials = {
+      username: String(credentials.username).trim(),
+      password: String(credentials.password),
+    };
+
+    const response = await this.post('/users/login', sanitizedCredentials);
     if (response.success && response.data.token) {
       this.setToken(response.data.token);
-      localStorage.setItem('accessToken', response.data.token);
+      // No localStorage - token managed by server sessions
     }
     return response;
   }
@@ -335,7 +528,55 @@ class ApiService {
   }
 
   async updateProfile(profileData) {
-    return this.put('/users/profile', profileData);
+    console.log('=== API SERVICE DEBUG ===');
+    console.log(
+      'API Service - Current token:',
+      this.getToken() ? 'EXISTS' : 'MISSING',
+    );
+    console.log('API Service - Token length:', this.getToken()?.length || 0);
+    console.log(
+      'API Service - Fajr timing sent:',
+      profileData.prayerTiming?.Fajr,
+    );
+    console.log(
+      'API Service - Dhuhr timing sent:',
+      profileData.prayerTiming?.Dhuhr,
+    );
+    console.log(
+      'API Service - Asr timing sent:',
+      profileData.prayerTiming?.Asr,
+    );
+    console.log(
+      'API Service - Maghrib timing sent:',
+      profileData.prayerTiming?.Maghrib,
+    );
+    console.log(
+      'API Service - Isha timing sent:',
+      profileData.prayerTiming?.Isha,
+    );
+    const result = await this.put('/users/profile', profileData);
+    console.log(
+      'API Service - Result Fajr timing:',
+      result.data?.preferences?.prayerTiming?.Fajr,
+    );
+    console.log(
+      'API Service - Result Dhuhr timing:',
+      result.data?.preferences?.prayerTiming?.Dhuhr,
+    );
+    console.log(
+      'API Service - Result Asr timing:',
+      result.data?.preferences?.prayerTiming?.Asr,
+    );
+    console.log(
+      'API Service - Result Maghrib timing:',
+      result.data?.preferences?.prayerTiming?.Maghrib,
+    );
+    console.log(
+      'API Service - Result Isha timing:',
+      result.data?.preferences?.prayerTiming?.Isha,
+    );
+    console.log('=== END API SERVICE DEBUG ===');
+    return result;
   }
 
   async changePassword(passwordData) {
@@ -363,13 +604,121 @@ class ApiService {
     return this.put(`/users/admin/users/${userId}/role`, { role });
   }
 
+  // Activity Logs API methods
+  async getActivityLogs(params = {}) {
+    const queryParams = new URLSearchParams(params);
+    return this.get(`/activity-logs?${queryParams}`);
+  }
+
+  async getActivityStats() {
+    return this.get('/activity-logs/stats');
+  }
+
+  async getActivityLogsByUser(username, params = {}) {
+    const queryParams = new URLSearchParams(params);
+    return this.get(`/activity-logs/user/${username}?${queryParams}`);
+  }
+
+  async getActivityLogsByRole(role, params = {}) {
+    const queryParams = new URLSearchParams(params);
+    return this.get(`/activity-logs/role/${role}?${queryParams}`);
+  }
+
+  async exportActivityLogs(params = {}) {
+    const queryParams = new URLSearchParams(params);
+    return this.get(`/activity-logs/export?${queryParams}`);
+  }
+
+  async exportActivityLogsPDF(params = {}) {
+    const queryParams = new URLSearchParams(params);
+    return this.get(`/activity-logs/export-pdf?${queryParams}`, {
+      responseType: 'blob',
+    });
+  }
+
+  async cleanupActivityLogs(days = 90) {
+    return this.delete('/activity-logs/cleanup', { days });
+  }
+
+  async clearAllActivityLogs() {
+    return this.delete('/activity-logs/clear-all');
+  }
+
+  async clearActivityLogsByDateRange(startDate, endDate) {
+    return this.delete('/activity-logs/clear-by-date', { startDate, endDate });
+  }
+
+  async clearActivityLogsByUser(username) {
+    return this.delete('/activity-logs/clear-by-user', { username });
+  }
+
+  async clearActivityLogsByAction(action) {
+    return this.delete('/activity-logs/clear-by-action', { action });
+  }
+
+  async clearActivityLogsByRole(role) {
+    return this.delete('/activity-logs/clear-by-role', { role });
+  }
+
+  async clearFailedActivityLogs() {
+    return this.delete('/activity-logs/clear-failed');
+  }
+
+  async clearActivityLogsOlderThan(days) {
+    return this.delete('/activity-logs/clear-older-than', { days });
+  }
+
+  // Info Data API methods
+  async getInfoData() {
+    return this.get('/info-data');
+  }
+
+  async getInfoDataByType(type) {
+    try {
+      return await this.get(`/info-data/${type}`);
+    } catch (error) {
+      // Don't retry 404 errors for info data - it's expected for missing data
+      if (error.message.includes('Info data not found')) {
+        throw error; // Re-throw without retry
+      }
+      return this.get(`/info-data/${type}`); // Retry for other errors
+    }
+  }
+
+  async createOrUpdateInfoData(data) {
+    return this.post('/info-data', data);
+  }
+
+  async updateInfoData(type, data) {
+    return this.put(`/info-data/${type}`, data);
+  }
+
+  async deleteInfoData(type) {
+    return this.delete(`/info-data/${type}`);
+  }
+
+  async getInfoDataHistory(type, params = {}) {
+    const queryParams = new URLSearchParams(params);
+    return this.get(`/info-data/${type}/history?${queryParams}`);
+  }
+
   // Prayer Times API methods
   async getPrayerTimes() {
     return this.get('/prayer-times');
   }
 
   async updatePrayerTimes(times) {
-    return this.put('/prayer-times', times);
+    console.log('🔍 API Service - updatePrayerTimes called with:', times);
+    console.log('🔍 API Service - Current token exists:', !!this.getToken());
+    console.log('🔍 API Service - Token length:', this.getToken()?.length || 0);
+    try {
+      const result = await this.put('/prayer-times', times);
+      console.log('✅ API Service - updatePrayerTimes success:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API Service - updatePrayerTimes error:', error);
+      throw error;
+    }
   }
 
   async getPrayerTimesHistory() {
@@ -401,7 +750,7 @@ class ApiService {
   async healthCheck() {
     try {
       const response = await fetch(
-        `${this.baseURL.replace('/api', '')}/health`,
+        `${this.baseURL}/health`.replace('/api/health', '/api/health'),
       );
       return response.json();
     } catch (error) {

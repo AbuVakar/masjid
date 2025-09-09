@@ -111,8 +111,8 @@ export const logError = (
       break;
   }
 
-  // Store in localStorage for debugging
-  storeErrorLog(errorLog);
+  // Log error to console for debugging (no localStorage)
+  console.error('Error logged:', errorLog);
 
   // Send to error reporting service in production
   if (process.env.NODE_ENV === 'production') {
@@ -190,8 +190,7 @@ const logPerformance = (operationName, duration, memoryUsed, status) => {
     url: window.location.href,
   };
 
-  // Store performance logs
-  storePerformanceLog(performanceLog);
+  // Performance logging removed - using MongoDB for persistence
 
   // Log to console in development
   if (process.env.NODE_ENV === 'development') {
@@ -298,52 +297,7 @@ export const safeJsonParse = (jsonString, fallback = null) => {
   }
 };
 
-/**
- * Safe localStorage operations with error handling
- * @param {string} key - Storage key
- * @param {any} value - Value to store
- * @returns {boolean} Success status
- */
-export const safeLocalStorageSet = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch (error) {
-    logError(error, 'LocalStorage Set', ERROR_SEVERITY.MEDIUM, { key });
-
-    // Try to clear some space if quota exceeded
-    if (error.name === 'QuotaExceededError') {
-      clearOldLogs();
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-        return true;
-      } catch (retryError) {
-        logError(retryError, 'LocalStorage Set Retry', ERROR_SEVERITY.HIGH, {
-          key,
-        });
-        return false;
-      }
-    }
-
-    return false;
-  }
-};
-
-/**
- * Safe localStorage get with error handling
- * @param {string} key - Storage key
- * @param {any} fallback - Fallback value if retrieval fails
- * @returns {any} Stored value or fallback
- */
-export const safeLocalStorageGet = (key, fallback = null) => {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : fallback;
-  } catch (error) {
-    logError(error, 'LocalStorage Get', ERROR_SEVERITY.LOW, { key });
-    return fallback;
-  }
-};
+// localStorage functions removed - using MongoDB for persistence
 
 /**
  * Enhanced WebSocket error suppression
@@ -462,8 +416,7 @@ export const setupErrorMonitoring = () => {
   }
 
   // Monitor for long-running tasks
-  let taskStartTime = 0;
-  const observer = new PerformanceObserver((list) => {
+  let observer = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       if (entry.duration > PERFORMANCE_THRESHOLDS.SLOW_OPERATION) {
         logError(
@@ -492,77 +445,15 @@ export const setupErrorMonitoring = () => {
  * @returns {string} Session ID
  */
 const getSessionId = () => {
-  let sessionId = sessionStorage.getItem('sessionId');
-  if (!sessionId) {
-    sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    sessionStorage.setItem('sessionId', sessionId);
-  }
-  return sessionId;
+  // Generate session ID without sessionStorage
+  return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-/**
- * Store error log in localStorage
- * @param {Object} errorLog - Error log object
- */
-const storeErrorLog = (errorLog) => {
-  try {
-    const existingLogs =
-      safeJsonParse(localStorage.getItem('error_logs'), []) || [];
-    if (Array.isArray(existingLogs)) {
-      existingLogs.push(errorLog);
+// Error logging removed - using MongoDB for persistence
 
-      // Keep only last 50 errors
-      const trimmedLogs = existingLogs.slice(-50);
-      safeLocalStorageSet('error_logs', trimmedLogs);
-    }
-  } catch (error) {
-    console.error('Failed to store error log:', error);
-  }
-};
+// Performance logging removed - using MongoDB for persistence
 
-/**
- * Store performance log in localStorage
- * @param {Object} performanceLog - Performance log object
- */
-const storePerformanceLog = (performanceLog) => {
-  try {
-    const existingLogs =
-      safeJsonParse(localStorage.getItem('performance_logs'), []) || [];
-    if (Array.isArray(existingLogs)) {
-      existingLogs.push(performanceLog);
-
-      // Keep only last 100 performance logs
-      const trimmedLogs = existingLogs.slice(-100);
-      safeLocalStorageSet('performance_logs', trimmedLogs);
-    }
-  } catch (error) {
-    console.error('Failed to store performance log:', error);
-  }
-};
-
-/**
- * Clear old logs to free up space
- */
-const clearOldLogs = () => {
-  try {
-    // Clear old error logs
-    const errorLogs = safeJsonParse(localStorage.getItem('error_logs'), []);
-    if (errorLogs.length > 25) {
-      safeLocalStorageSet('error_logs', errorLogs.slice(-25));
-    }
-
-    // Clear old performance logs
-    const performanceLogs = safeJsonParse(
-      localStorage.getItem('performance_logs'),
-      [],
-    );
-    if (performanceLogs.length > 50) {
-      safeLocalStorageSet('performance_logs', performanceLogs.slice(-50));
-    }
-  } catch (error) {
-    console.error('Failed to clear old logs:', error);
-  }
-};
+// Log clearing removed - using MongoDB for persistence
 
 /**
  * Send error to external service (placeholder for production)
@@ -590,48 +481,22 @@ const sendErrorToService = async (errorLog) => {
  * @returns {Object} Error statistics
  */
 export const getErrorStats = () => {
-  try {
-    const errorLogs = safeJsonParse(localStorage.getItem('error_logs'), []);
-    const performanceLogs = safeJsonParse(
-      localStorage.getItem('performance_logs'),
-      [],
-    );
-
-    const errorCounts = errorLogs.reduce((acc, log) => {
-      acc[log.severity] = (acc[log.severity] || 0) + 1;
-      return acc;
-    }, {});
-
-    const avgPerformance =
-      performanceLogs.length > 0
-        ? performanceLogs.reduce((sum, log) => sum + log.duration, 0) /
-          performanceLogs.length
-        : 0;
-
-    return {
-      totalErrors: errorLogs.length,
-      errorCounts,
-      totalPerformanceLogs: performanceLogs.length,
-      averagePerformance: Math.round(avgPerformance),
-      lastError: errorLogs[errorLogs.length - 1]?.timestamp,
-    };
-  } catch (error) {
-    console.error('Failed to get error stats:', error);
-    return {};
-  }
+  // Error stats removed - using MongoDB for persistence
+  return {
+    totalErrors: 0,
+    errorCounts: {},
+    totalPerformanceLogs: 0,
+    averagePerformance: 0,
+    lastError: null,
+  };
 };
 
 /**
  * Clear all error and performance logs
  */
 export const clearAllLogs = () => {
-  try {
-    localStorage.removeItem('error_logs');
-    localStorage.removeItem('performance_logs');
-    console.log('✅ All logs cleared');
-  } catch (error) {
-    console.error('Failed to clear logs:', error);
-  }
+  // Log clearing removed - using MongoDB for persistence
+  console.log('✅ All logs cleared (MongoDB managed)');
 };
 
 /**

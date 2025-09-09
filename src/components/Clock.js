@@ -1,36 +1,64 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaClock, FaPray } from 'react-icons/fa';
+import { useNotifications } from '../hooks/useNotifications';
+import { useUser } from '../context/UserContext';
 
-// Function to fetch sunset time from API
+// Fetch sunset time from API with better error handling
 const fetchSunsetTime = async (
   date,
   latitude = 28.7774,
   longitude = 78.0603,
 ) => {
   try {
-    // Format date as YYYY-MM-DD
     const dateStr = date.toISOString().split('T')[0];
 
-    // Use Sunrise-Sunset API
+    // Use Sunrise-Sunset API with formatted=0 for 24-hour format
     const url = `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateStr}&formatted=0`;
 
-    const response = await fetch(url);
+    console.log(`🌅 Fetching sunset from: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      // Add timeout
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
+
+    console.log(`🌅 API Response:`, data);
 
     if (data.status === 'OK' && data.results.sunset) {
       // Convert UTC time to IST (UTC+5:30)
       const sunsetUTC = new Date(data.results.sunset);
       const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000); // Add 5.5 hours
 
+      // Use UTC methods since the Date object is still in UTC timezone
       const hours = sunsetIST.getUTCHours();
       const minutes = sunsetIST.getUTCMinutes();
+
+      console.log(`🌅 Raw API Response: ${data.results.sunset}`);
+      console.log(`🌅 UTC Sunset: ${sunsetUTC.toISOString()}`);
+      console.log(`🌅 IST Sunset: ${sunsetIST.toISOString()}`);
+      console.log(
+        `🌅 Final Time: ${hours}:${minutes.toString().padStart(2, '0')}`,
+      );
 
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     } else {
       throw new Error('Failed to fetch sunset data');
     }
   } catch (error) {
-    console.error('Error fetching sunset time:', error);
+    console.warn(
+      'Sunset API failed, using fallback calculation:',
+      error.message,
+    );
     // Fallback to approximate calculation if API fails
     return calculateSunsetFallback(date, latitude, longitude);
   }
@@ -66,6 +94,10 @@ const calculateSunsetFallback = (
 };
 
 const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
+  // Get notification hooks and user context
+  const { schedulePrayerNotifications } = useNotifications();
+  const { user } = useUser();
+
   // Memoize default prayer times to prevent recreation on each render
   const defaultPrayerTimes = useMemo(
     () => ({
@@ -82,14 +114,12 @@ const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
   const [displayNextPrayer, setDisplayNextPrayer] = useState('Next: --');
   const [dayName, setDayName] = useState('');
   const [sunsetTime, setSunsetTime] = useState('18:30'); // Default sunset time
-  const [isLoadingSunset, setIsLoadingSunset] = useState(false);
 
   const pad = useCallback((n) => (n < 10 ? `0${n}` : `${n}`), []);
 
   // Fetch sunset time from API
   const fetchSunsetForDate = useCallback(async (date) => {
     try {
-      setIsLoadingSunset(true);
       const sunset = await fetchSunsetTime(date, 28.7774, 78.0603);
       setSunsetTime(sunset);
       console.log(
@@ -103,18 +133,94 @@ const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
       console.log(
         `🌅 Fallback sunset for ${date.toDateString()}: ${fallbackSunset} (Location: 28.7774°N, 78.0603°E)`,
       );
-    } finally {
-      setIsLoadingSunset(false);
     }
   }, []);
 
   // Calculate current prayer times including dynamic Maghrib
   const getCurrentPrayerTimes = useCallback(() => {
+    // Validate sunsetTime before using it
+    let validSunsetTime = '18:30'; // Default fallback
+
+    if (
+      sunsetTime &&
+      typeof sunsetTime === 'string' &&
+      sunsetTime.includes(':')
+    ) {
+      const [hours, minutes] = sunsetTime.split(':').map(Number);
+      if (
+        !isNaN(hours) &&
+        !isNaN(minutes) &&
+        hours >= 0 &&
+        hours <= 23 &&
+        minutes >= 0 &&
+        minutes <= 59
+      ) {
+        validSunsetTime = sunsetTime;
+      } else {
+        console.warn(
+          'Clock - Invalid sunset time format, using default:',
+          sunsetTime,
+        );
+      }
+    } else {
+      console.warn(
+        'Clock - Sunset time not available, using default:',
+        sunsetTime,
+      );
+    }
+
+    console.log('Clock - Using sunset time:', validSunsetTime);
+
     return {
       ...(propPrayerTimes || defaultPrayerTimes),
-      Maghrib: sunsetTime,
+      Maghrib: validSunsetTime,
     };
   }, [propPrayerTimes, defaultPrayerTimes, sunsetTime]);
+
+  // Apply prayer timing preferences to adjust notification times
+  const getAdjustedPrayerTimes = useCallback(() => {
+    const baseTimes = getCurrentPrayerTimes();
+    const timingPrefs = user?.preferences?.prayerTiming;
+
+    if (!timingPrefs) {
+      return baseTimes;
+    }
+
+    const adjustedTimes = {};
+
+    Object.entries(baseTimes).forEach(([prayer, time]) => {
+      const timingOffset = timingPrefs[prayer] || 5; // Default to 5 minutes
+      const [hours, minutes] = time.split(':').map(Number);
+
+      // Calculate adjusted time (subtract the offset minutes)
+      let adjustedMinutes = minutes - timingOffset;
+      let adjustedHours = hours;
+
+      // Handle negative minutes (borrow from hours)
+      if (adjustedMinutes < 0) {
+        adjustedMinutes += 60;
+        adjustedHours -= 1;
+      }
+
+      // Handle negative hours (borrow from previous day)
+      if (adjustedHours < 0) {
+        adjustedHours += 24;
+      }
+
+      // Ensure valid time format
+      const validHours = Math.max(0, Math.min(23, adjustedHours));
+      const validMinutes = Math.max(0, Math.min(59, adjustedMinutes));
+
+      adjustedTimes[prayer] =
+        `${validHours.toString().padStart(2, '0')}:${validMinutes.toString().padStart(2, '0')}`;
+    });
+
+    console.log('Clock - Base prayer times:', baseTimes);
+    console.log('Clock - Timing preferences:', timingPrefs);
+    console.log('Clock - Adjusted prayer times:', adjustedTimes);
+
+    return adjustedTimes;
+  }, [getCurrentPrayerTimes, user?.preferences?.prayerTiming]);
 
   // Memoize the update function with all its dependencies
   const updateClock = useCallback(() => {
@@ -132,24 +238,62 @@ const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
     setDisplayTime(currentTime);
     setDayName(daysFull[now.getDay()]);
 
+    // Schedule prayer notifications if user has prayer notifications enabled
+    if (
+      user?.preferences?.notifications?.prayer &&
+      schedulePrayerNotifications
+    ) {
+      const adjustedPrayerTimes = getAdjustedPrayerTimes();
+      console.log(
+        'Clock - Scheduling prayer notifications for:',
+        adjustedPrayerTimes,
+      );
+      console.log(
+        'Clock - User notification preferences:',
+        user.preferences.notifications,
+      );
+      schedulePrayerNotifications(
+        adjustedPrayerTimes,
+        user.preferences.notifications,
+      );
+    }
+
     // Get current prayer times with dynamic Maghrib
     const effectivePrayerTimes = getCurrentPrayerTimes();
+
+    // Restrict to known prayers only; ignore any extra fields
+    const orderedPrayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
     // Next prayer calculation (sort by time for robustness)
     const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
     const isFriday = now.getDay() === 5;
-    const mapEntries = Object.entries(effectivePrayerTimes).map(
-      ([name, time]) => {
-        // On Friday, show Juma at 13:10 instead of Dhuhr
-        if (isFriday && name === 'Dhuhr') {
-          const h = 13,
-            m = 10;
-          return { name: 'Juma', time: '13:10', minutes: h * 60 + m };
-        }
-        const [h, m] = String(time).split(':').map(Number);
-        return { name, time, minutes: h * 60 + m };
-      },
-    );
+    const mapEntries = orderedPrayers.map((name) => {
+      const time = effectivePrayerTimes[name];
+      // On Friday, show Juma at 13:10 instead of Dhuhr
+      if (isFriday && name === 'Dhuhr') {
+        const h = 13,
+          m = 10;
+        return { name: 'Juma', time: '13:10', minutes: h * 60 + m };
+      }
+
+      // Validate time format before parsing
+      if (!time || typeof time !== 'string' || !time.includes(':')) {
+        console.warn(`Clock - Invalid time format for ${name}:`, time);
+        return { name, time: '00:00', minutes: 0 };
+      }
+
+      const [h, m] = String(time).split(':').map(Number);
+
+      // Validate parsed hours and minutes
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+        console.warn(
+          `Clock - Invalid time values for ${name}: hours=${h}, minutes=${m}`,
+        );
+        return { name, time: '00:00', minutes: 0 };
+      }
+
+      return { name, time, minutes: h * 60 + m };
+    });
     const prayerEntries = mapEntries.sort((a, b) => a.minutes - b.minutes);
 
     const next =
@@ -174,7 +318,13 @@ const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
         }`.trim(),
       );
     }
-  }, [getCurrentPrayerTimes, pad]);
+  }, [
+    getCurrentPrayerTimes,
+    getAdjustedPrayerTimes,
+    pad,
+    schedulePrayerNotifications,
+    user?.preferences?.notifications,
+  ]);
 
   // Fetch sunset time when component mounts and date changes
   useEffect(() => {
@@ -182,6 +332,57 @@ const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     fetchSunsetForDate(today);
   }, [fetchSunsetForDate]);
+
+  // Check for daily date change and update Maghrib time
+  useEffect(() => {
+    const checkDailyUpdate = () => {
+      const now = new Date();
+      const currentDate = now.toDateString();
+
+      // Always update Maghrib time (no localStorage needed)
+      console.log(`📅 Clock - Date: ${currentDate}, updating Maghrib time...`);
+
+      // Fetch new Maghrib time
+      const fetchMaghribTime = async () => {
+        try {
+          const today = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+          );
+          const sunset = await fetchSunsetTime(today, 28.7774, 78.0603);
+          setSunsetTime(sunset);
+          console.log(`🌅 Clock - Daily update: Maghrib set to ${sunset}`);
+        } catch (error) {
+          console.error('Failed to fetch daily Maghrib time:', error);
+          const today = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+          );
+          const fallbackSunset = calculateSunsetFallback(
+            today,
+            28.7774,
+            78.0603,
+          );
+          setSunsetTime(fallbackSunset);
+          console.log(
+            `🌅 Clock - Daily fallback: Maghrib set to ${fallbackSunset}`,
+          );
+        }
+      };
+
+      fetchMaghribTime();
+    };
+
+    // Check immediately
+    checkDailyUpdate();
+
+    // Set up interval to check every hour
+    const interval = setInterval(checkDailyUpdate, 60 * 60 * 1000); // 1 hour
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Set up the interval for the clock
   useEffect(() => {

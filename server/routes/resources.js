@@ -1,9 +1,42 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Resource = require('../models/Resource');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { validateResource } = require('../middleware/validator');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    // Create uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename with timestamp
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext).replace(/\s+/g, '-');
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow all file types for now
+    cb(null, true);
+  },
+});
 
 // @desc    Get all resources
 // @route   GET /api/resources
@@ -86,6 +119,8 @@ router.get(
 router.post(
   '/',
   authenticateToken,
+  requireAdmin,
+  upload.single('file'), // Handle file upload
   validateResource,
   asyncHandler(async (req, res) => {
     const {
@@ -101,21 +136,53 @@ router.post(
       uploadedBy,
     } = req.body;
 
+    // Handle file upload
+    let finalFileUrl = fileUrl;
+    let finalFileName = fileName;
+    let finalFileSize = fileSize;
+    let finalFileType = fileType;
+
+    if (req.file) {
+      // File was uploaded
+      finalFileUrl = `/uploads/${req.file.filename}`;
+      finalFileName = req.file.originalname;
+      finalFileSize = req.file.size;
+      finalFileType = req.file.mimetype;
+
+      console.log('📁 File uploaded successfully:', {
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        path: req.file.path,
+      });
+    } else if (!fileUrl) {
+      throw new AppError(
+        'Either file upload or file URL is required',
+        400,
+        'FILE_REQUIRED',
+      );
+    }
+
     const resource = new Resource({
       title,
       description,
       category,
-      fileUrl,
-      fileName,
-      fileSize: parseInt(fileSize) || 0,
-      fileType,
+      fileUrl: finalFileUrl,
+      fileName: finalFileName,
+      fileSize: parseInt(finalFileSize) || 0,
+      fileType: finalFileType,
       tags: tags || [],
       isPublic: isPublic !== undefined ? isPublic : true,
       uploadedBy: uploadedBy || 'admin',
     });
 
     const savedResource = await resource.save();
-    res.status(201).json(savedResource);
+    res.status(201).json({
+      success: true,
+      data: savedResource,
+      message: 'Resource created successfully',
+    });
   }),
 );
 
@@ -125,6 +192,7 @@ router.post(
 router.put(
   '/:id',
   authenticateToken,
+  requireAdmin,
   validateResource,
   asyncHandler(async (req, res) => {
     const resource = await Resource.findByIdAndUpdate(req.params.id, req.body, {
@@ -136,7 +204,11 @@ router.put(
       throw new AppError('Resource not found', 404, 'RESOURCE_NOT_FOUND');
     }
 
-    res.json(resource);
+    res.json({
+      success: true,
+      data: resource,
+      message: 'Resource updated successfully',
+    });
   }),
 );
 
@@ -146,6 +218,7 @@ router.put(
 router.delete(
   '/:id',
   authenticateToken,
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const resource = await Resource.findByIdAndDelete(req.params.id);
 
@@ -239,6 +312,26 @@ router.get(
       .limit(parseInt(limit));
 
     res.json(resources);
+  }),
+);
+
+// @desc    Export resources
+// @route   GET /api/resources/export
+// @access  Public
+router.get(
+  '/export',
+  asyncHandler(async (req, res) => {
+    const resources = await Resource.find({ status: 'active' })
+      .select(
+        'title description category fileName fileType downloadCount viewCount createdAt',
+      )
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      message: 'Resources exported successfully',
+      data: resources,
+    });
   }),
 );
 
