@@ -233,9 +233,15 @@ const Header = ({
             <button
               className='mobile-menu-btn navlink'
               aria-label='Toggle navigation menu'
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 setIsMobileMenuOpen((o) => !o);
                 setIsProfileMenuOpen(false);
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
               }}
             >
               {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
@@ -253,9 +259,15 @@ const Header = ({
             {!isGuest && (
               <button
                 className='navlink profile-mobile'
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setIsProfileMenuOpen((o) => !o);
                   setIsMobileMenuOpen(false);
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                 }}
                 title='User Profile'
                 aria-label='User Profile'

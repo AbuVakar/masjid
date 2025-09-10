@@ -85,7 +85,8 @@ router.get(
           },
         },
       ]),
-      Resource.countDocuments(),
+      // Count only active resources to align with user-visible lists
+      Resource.countDocuments({ status: 'active' }),
       PrayerTime.countDocuments(),
     ]);
 

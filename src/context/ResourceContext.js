@@ -62,14 +62,36 @@ export const ResourceProvider = ({ children }) => {
       if (result.success) {
         // Update local state instead of refetching
         if (resourceData.id) {
-          // Update existing resource
-          setResources((prevResources) =>
-            prevResources.map((resource) =>
-              resource._id === resourceData.id
-                ? { ...resource, ...resourceData }
-                : resource,
-            ),
-          );
+          // Update existing resource; if not present locally, append it
+          setResources((prevResources) => {
+            const index = prevResources.findIndex(
+              (r) => r._id === resourceData.id,
+            );
+
+            // Prefer server response data when available
+            const updatedFromServer = result.data
+              ? { ...result.data }
+              : { _id: resourceData.id, ...resourceData };
+
+            if (index !== -1) {
+              return prevResources.map((r) =>
+                r._id === resourceData.id ? { ...r, ...updatedFromServer } : r,
+              );
+            }
+
+            // Avoid duplicates by id or by (fileUrl+title)
+            const exists = prevResources.some(
+              (r) =>
+                r._id === updatedFromServer._id ||
+                (r.fileUrl === updatedFromServer.fileUrl &&
+                  r.title === updatedFromServer.title),
+            );
+            if (exists) {
+              console.log('⚠️ Resource already in state, not adding duplicate');
+              return prevResources;
+            }
+            return [...prevResources, updatedFromServer];
+          });
         } else {
           // Add new resource - ensure no duplicates
           setResources((prevResources) => {

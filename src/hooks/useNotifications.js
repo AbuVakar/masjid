@@ -148,10 +148,7 @@ export const useNotifications = () => {
   const schedulePrayerNotifications = useCallback(
     async (times, prefs = notifyPrefs) => {
       try {
-        if (
-          !('serviceWorker' in navigator) ||
-          !navigator.serviceWorker.controller
-        ) {
+        if (!('serviceWorker' in navigator)) {
           console.log('Service worker not available');
           return;
         }
@@ -162,9 +159,18 @@ export const useNotifications = () => {
         }
 
         const registration = await navigator.serviceWorker.ready;
+        // Prepare times; on Friday, treat Dhuhr as Juma for scheduling
+        const now = new Date();
+        const isFriday = now.getDay() === 5;
+        const workingTimes = { ...times };
+        if (isFriday && typeof workingTimes.Dhuhr === 'string') {
+          // Move adjusted Dhuhr time under Juma label for clearer notifications
+          workingTimes.Juma = workingTimes.Dhuhr;
+          delete workingTimes.Dhuhr;
+        }
 
-        // Transform times for Friday
-        const entries = Object.entries(times)
+        // Transform times into schedule entries
+        const entries = Object.entries(workingTimes)
           .filter(([prayer]) => {
             // Filter out non-prayer fields
             const validPrayers = [
@@ -226,7 +232,7 @@ export const useNotifications = () => {
           })
           .filter((entry) => entry !== null); // Remove invalid entries
 
-        registration.active.postMessage({
+        registration.active?.postMessage({
           type: 'schedule',
           data: {
             times: entries,

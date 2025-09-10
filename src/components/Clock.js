@@ -238,25 +238,7 @@ const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
     setDisplayTime(currentTime);
     setDayName(daysFull[now.getDay()]);
 
-    // Schedule prayer notifications if user has prayer notifications enabled
-    if (
-      user?.preferences?.notifications?.prayer &&
-      schedulePrayerNotifications
-    ) {
-      const adjustedPrayerTimes = getAdjustedPrayerTimes();
-      console.log(
-        'Clock - Scheduling prayer notifications for:',
-        adjustedPrayerTimes,
-      );
-      console.log(
-        'Clock - User notification preferences:',
-        user.preferences.notifications,
-      );
-      schedulePrayerNotifications(
-        adjustedPrayerTimes,
-        user.preferences.notifications,
-      );
-    }
+    // Scheduling moved to a dedicated effect to avoid duplicate timers each second
 
     // Get current prayer times with dynamic Maghrib
     const effectivePrayerTimes = getCurrentPrayerTimes();
@@ -390,6 +372,23 @@ const Clock = ({ time, nextPrayer, prayerTimes: propPrayerTimes }) => {
     updateClock();
     return () => clearInterval(timer);
   }, [updateClock]);
+
+  // Schedule notifications only when times or prefs change (not every second)
+  useEffect(() => {
+    if (!user?.preferences?.notifications?.prayer) return;
+    if (!schedulePrayerNotifications) return;
+
+    const adjustedPrayerTimes = getAdjustedPrayerTimes();
+    console.log('Clock - Scheduling (effect) for:', adjustedPrayerTimes);
+    schedulePrayerNotifications(
+      adjustedPrayerTimes,
+      user.preferences.notifications,
+    );
+  }, [
+    getAdjustedPrayerTimes,
+    schedulePrayerNotifications,
+    user?.preferences?.notifications,
+  ]);
 
   return (
     <div className='clock-container'>

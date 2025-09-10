@@ -2,6 +2,98 @@ import React, { useState, useEffect } from 'react';
 import { useNotify } from '../../context/NotificationContext';
 import { validateTime } from '../../utils/validation';
 
+// Mobile Footer Portal Component
+const MobileFooterPortal = ({ onClose, handleSave, loading, timeValidity }) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  if (!isMobile) return null;
+
+  const footerContent = (
+    <div 
+      className="mobile-footer-portal"
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: '100vw',
+        height: 'auto',
+        minHeight: '70px',
+        background: '#ffffff',
+        borderTop: '3px solid #007bff',
+        zIndex: 2147483647,
+        display: 'flex',
+        gap: '12px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '15px 20px',
+        paddingBottom: `calc(15px + env(safe-area-inset-bottom))`,
+        boxShadow: '0 -8px 25px rgba(0, 0, 0, 0.4)',
+        WebkitBackdropFilter: 'blur(10px)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      <button 
+        type='button' 
+        className='ghost' 
+        onClick={onClose}
+        style={{
+          flex: 1,
+          maxWidth: '140px',
+          minHeight: '50px',
+          padding: '15px 20px',
+          fontSize: '16px',
+          fontWeight: '700',
+          borderRadius: '10px',
+          border: '2px solid #ddd',
+          background: '#ffffff',
+          color: '#333333',
+          cursor: 'pointer',
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
+        }}
+      >
+        Cancel
+      </button>
+      <button
+        type='button'
+        onClick={handleSave}
+        disabled={loading || Object.values(timeValidity).some((valid) => !valid)}
+        style={{
+          flex: 1,
+          maxWidth: '140px',
+          minHeight: '50px',
+          padding: '15px 20px',
+          fontSize: '16px',
+          fontWeight: '700',
+          borderRadius: '10px',
+          border: '2px solid #007bff',
+          background: '#007bff',
+          color: 'white',
+          cursor: 'pointer',
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
+        }}
+      >
+        {loading ? 'Saving...' : 'Save Times'}
+      </button>
+    </div>
+  );
+
+  return ReactDOM.createPortal(footerContent, document.body);
+};
+
 // Function to fetch sunset time from API
 const fetchSunsetTime = async (
   date,
@@ -153,6 +245,18 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
     }
   }, [data?.times]);
 
+  // Dynamic Viewport Height Fix for Mobile
+  useEffect(() => {
+    setVh();
+    window.addEventListener('resize', setVh);
+    window.addEventListener('orientationchange', setVh);
+    
+    return () => {
+      window.removeEventListener('resize', setVh);
+      window.removeEventListener('orientationchange', setVh);
+    };
+  }, []);
+
   const handleTimeChange = (prayer, value) => {
     const isValid = validateTime(value);
     setTimeValidity((prev) => ({ ...prev, [prayer]: isValid }));
@@ -191,8 +295,8 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
   };
 
   return (
-    <div className='modal-backdrop'>
-      <div className='modal' style={{ maxWidth: 500 }}>
+    <div className='modal-backdrop timetable-modal-backdrop'>
+      <div className='modal timetable-modal'>
         <div className='modal-header'>
           <h3>🕌 Prayer Times</h3>
           <button
@@ -241,8 +345,41 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
             ))}
           </div>
         </div>
-        <div className='modal-footer'>
-          <button type='button' className='ghost' onClick={onClose}>
+        {/* Universal Footer - Always Visible */}
+        <div className='modal-footer' style={{
+          position: 'relative',
+          width: '100%',
+          background: '#ffffff',
+          borderTop: '3px solid #007bff',
+          padding: '15px 20px',
+          display: 'flex',
+          gap: '12px',
+          justifyContent: 'center',
+          alignItems: 'center',
+          boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.1)',
+          zIndex: 1000,
+          marginTop: 'auto'
+        }}>
+          <button 
+            type='button' 
+            className='ghost' 
+            onClick={onClose}
+            style={{
+              flex: 1,
+              maxWidth: '140px',
+              minHeight: '50px',
+              padding: '15px 20px',
+              fontSize: '16px',
+              fontWeight: '700',
+              borderRadius: '10px',
+              border: '2px solid #ddd',
+              background: '#ffffff',
+              color: '#333333',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}
+          >
             Cancel
           </button>
           <button
@@ -251,6 +388,21 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
             disabled={
               loading || Object.values(timeValidity).some((valid) => !valid)
             }
+            style={{
+              flex: 1,
+              maxWidth: '140px',
+              minHeight: '50px',
+              padding: '15px 20px',
+              fontSize: '16px',
+              fontWeight: '700',
+              borderRadius: '10px',
+              border: '2px solid #007bff',
+              background: '#007bff',
+              color: 'white',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}
           >
             {loading ? 'Saving...' : 'Save Times'}
           </button>

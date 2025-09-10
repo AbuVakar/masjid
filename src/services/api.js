@@ -9,6 +9,7 @@ class ApiService {
         ? 'http://localhost:5000/api'
         : `http://${window.location.hostname}:5000/api`);
     this.baseURL = apiUrl;
+    console.log('API Service initialized with URL:', this.baseURL);
     this.token = null; // No localStorage - token will be managed by server sessions
     this.csrfToken = null;
     this.isOnline = navigator.onLine;
@@ -208,8 +209,17 @@ class ApiService {
           // Handle 401 errors specifically
           if (response.status === 401) {
             console.log('401 Unauthorized - Token may be expired');
-            // Don't throw immediately, let the retry logic handle it
+            // Clear token on 401 error
+            this.setToken(null);
             throw new Error('401 Unauthorized');
+          }
+
+          // Handle 429 errors specifically (Rate Limiting)
+          if (response.status === 429) {
+            console.log('429 Rate Limited - Too many requests');
+            throw new Error(
+              'Too many requests. Please wait a moment and try again.',
+            );
           }
 
           throw new Error(

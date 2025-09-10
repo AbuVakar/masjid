@@ -850,6 +850,11 @@ const Resources = ({ isAdmin = false, onClose, onNavigate }) => {
           cursor: pointer;
           font-size: 18px;
           transition: all 0.3s ease;
+          min-width: 44px;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .close-btn:hover {
@@ -862,6 +867,9 @@ const Resources = ({ isAdmin = false, onClose, onNavigate }) => {
           gap: 8px;
           margin-bottom: 30px;
           flex-wrap: wrap;
+          overflow-x: auto;
+          padding-bottom: 8px;
+          -webkit-overflow-scrolling: touch;
         }
 
         .tab {
@@ -878,6 +886,9 @@ const Resources = ({ isAdmin = false, onClose, onNavigate }) => {
           gap: 8px;
           transition: all 0.3s ease;
           backdrop-filter: blur(10px);
+          white-space: nowrap;
+          flex-shrink: 0;
+          min-width: fit-content;
         }
 
         .tab:hover {
@@ -1415,15 +1426,111 @@ const Resources = ({ isAdmin = false, onClose, onNavigate }) => {
           }
         }
 
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+          .resources-container {
+            padding: 15px;
+            margin: 5px;
+            border-radius: 15px;
+          }
+
+          .resources-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+          }
+
+          .header-content h2 {
+            font-size: 22px;
+          }
+
+          .header-content p {
+            font-size: 14px;
+          }
+
+          .close-btn {
+            background: rgba(255, 107, 107, 0.4) !important;
+            border: 2px solid rgba(255, 107, 107, 0.6) !important;
+            color: #ff6b6b !important;
+            padding: 10px !important;
+            border-radius: 12px !important;
+            font-size: 16px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            align-self: center !important;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3) !important;
+            position: relative !important;
+            z-index: 10 !important;
+          }
+
+          .close-btn:hover {
+            background: rgba(255, 107, 107, 0.6) !important;
+            transform: scale(1.1) !important;
+          }
+
+          .resources-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow: visible;
+            padding-bottom: 0;
+          }
+
+          .tab {
+            padding: 12px 16px;
+            font-size: 14px;
+            width: 100%;
+            justify-content: flex-start;
+            border-radius: 10px;
+            text-align: left;
+          }
+
+          .tab span {
+            font-size: 14px;
+          }
+        }
+
         @media (max-width: 480px) {
           .resources-container {
             padding: 12px;
             margin: 5px;
           }
 
+          .close-btn {
+            background: rgba(255, 107, 107, 0.5) !important;
+            border: 2px solid rgba(255, 107, 107, 0.7) !important;
+            color: #ff6b6b !important;
+            padding: 12px !important;
+            border-radius: 14px !important;
+            font-size: 18px !important;
+            min-width: 45px !important;
+            min-height: 45px !important;
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4) !important;
+          }
+
+          .close-btn:hover {
+            background: rgba(255, 107, 107, 0.7) !important;
+            transform: scale(1.15) !important;
+          }
+
+          .resources-tabs {
+            gap: 6px;
+            margin-bottom: 15px;
+            padding-bottom: 0;
+          }
+
           .tab {
-            padding: 8px 12px;
-            font-size: 12px;
+            padding: 10px 14px;
+            font-size: 13px;
+            border-radius: 8px;
+            width: 100%;
+          }
+
+          .tab span {
+            font-size: 13px;
           }
 
           .resource-card {

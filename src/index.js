@@ -32,7 +32,9 @@ window.addEventListener('unhandledrejection', (event) => {
     event.reason &&
     typeof event.reason === 'string' &&
     (event.reason.includes('content-script') ||
-      event.reason.includes('getThumbnail'))
+      event.reason.includes('getThumbnail') ||
+      event.reason.includes('chrome-extension') ||
+      event.reason.includes('moz-extension'))
   ) {
     return;
   }
@@ -47,7 +49,9 @@ window.addEventListener('error', (event) => {
     event.error &&
     typeof event.error === 'string' &&
     (event.error.includes('content-script') ||
-      event.error.includes('getThumbnail'))
+      event.error.includes('getThumbnail') ||
+      event.error.includes('chrome-extension') ||
+      event.error.includes('moz-extension'))
   ) {
     return;
   }

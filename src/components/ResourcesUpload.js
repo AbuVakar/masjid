@@ -277,7 +277,8 @@ const ResourcesUpload = ({
 
         setUploadProgress(100);
 
-        return result.data.fileUrl;
+        // Return the full created resource so caller can update state
+        return result.data;
       } catch (error) {
         console.error('❌ Upload error:', error);
 
@@ -320,36 +321,31 @@ const ResourcesUpload = ({
           if (file) {
             console.log('📁 File upload for:', file.name);
             // File upload is handled directly in handleFileUpload
-            const fileUrl = await handleFileUpload(file);
-            console.log('✅ File uploaded successfully');
+            const createdResource = await handleFileUpload(file);
+            console.log(
+              '✅ File uploaded and resource created:',
+              createdResource,
+            );
 
-            // Create resource data for the uploaded file
+            // Update state via onSave using update path (avoids duplicate create)
             const resourceData = {
-              title: formData.title,
-              description: formData.description,
-              category: formData.category,
-              fileUrl: fileUrl,
-              fileName: file.name,
-              fileSize: file.size,
-              fileType: file.type,
-              tags: formData.tags,
-              isPublic: true,
-              uploadedBy: 'admin',
+              id: createdResource._id,
+              ...createdResource,
             };
-
-            // Save the resource using the onSave function
-            const saveResult = await onSave(resourceData);
-            console.log('✅ Resource saved successfully:', saveResult);
-
-            // Only close modal if save was successful
-            if (saveResult && saveResult.success) {
-              notify('Resource uploaded and saved successfully!', {
-                type: 'success',
-              });
-              onCancel();
-            } else {
-              throw new Error('Failed to save resource to database');
+            try {
+              await onSave(resourceData);
+            } catch (e) {
+              // Even if update fails, the resource is already created; proceed
+              console.warn('Update after create failed (non-fatal):', e);
             }
+
+            // Notify and close
+            notify('Resource uploaded and saved successfully!', {
+              type: 'success',
+            });
+            // Let other dashboards know something changed
+            window.dispatchEvent(new CustomEvent('resourceChanged'));
+            onCancel();
           } else if (formData.fileUrl) {
             // For URL-based resources
             const resourceData = {

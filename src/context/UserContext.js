@@ -14,10 +14,18 @@ export const UserProvider = ({ children }) => {
     // Check if user is already authenticated via server session
     try {
       console.log('UserContext - Verifying user...');
-      console.log(
-        'UserContext - Current token:',
-        apiService.getToken() ? 'EXISTS' : 'MISSING',
-      );
+      const token = apiService.getToken();
+      console.log('UserContext - Current token:', token ? 'EXISTS' : 'MISSING');
+
+      // Only try to verify if we have a token
+      if (!token) {
+        console.log('UserContext - No token found, skipping verification');
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
 
       const response = await apiService.getProfile();
       if (response.success && response.data) {
@@ -33,7 +41,10 @@ export const UserProvider = ({ children }) => {
       }
     } catch (error) {
       console.log('UserContext - User verification failed:', error.message);
-      apiService.setToken(null);
+      // Only clear token if it's a 401 error (expired/invalid token)
+      if (error.message.includes('401')) {
+        apiService.setToken(null);
+      }
       setUser(null);
       setIsAuthenticated(false);
       setIsAdmin(false);

@@ -153,6 +153,8 @@ const Modal = ({
     Isha: true,
   });
 
+  // NO JAVASCRIPT - PURE CSS APPROACH
+
   // Contact form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -797,8 +799,35 @@ const Modal = ({
 
     return (
       <div className='modal-backdrop timetable-modal-backdrop'>
-        <div className='modal timetable-modal'>
-          <div className='timetable-container'>
+        <div
+          className='modal timetable-modal'
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            margin: 0,
+            padding: 0,
+            borderRadius: 0,
+            background: '#000000',
+            zIndex: 999999,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            className='timetable-container'
+            style={{
+              height: 'calc(100vh - 60px)',
+              overflowY: 'auto',
+              padding: '20px',
+              paddingBottom: '0px',
+              margin: 0,
+              background: '#111111',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
+            }}
+          >
             <div className='timetable-header'>
               <div className='timetable-ayah'>
                 <div className='ayah-text'>
@@ -928,50 +957,330 @@ const Modal = ({
                 </ul>
               </div>
             </div>
-
-            <div className='timetable-actions'>
-              <button
-                type='button'
-                className='action-btn ghost'
-                onClick={onClose}
-              >
-                Close
-              </button>
-
-              {isAdmin && (
-                <button
-                  type='button'
-                  className='action-btn ghost'
-                  onClick={() => {
-                    console.log(
-                      '📜 History button clicked - isAdmin:',
-                      isAdmin,
-                    );
-                    setShowHistory(true);
-                    console.log('📜 showHistory set to true');
-                  }}
-                >
-                  📜 History
-                </button>
-              )}
-              <button
-                type='button'
-                className='action-btn ghost'
-                onClick={handleResetClick}
-              >
-                Reset
-              </button>
-              <button
-                type='button'
-                className='action-btn primary'
-                onClick={handleSaveClick}
-              >
-                Save
-              </button>
-            </div>
           </div>
-          {/* Premium CSS Styles - Converted to inline styles */}
+
+          <div
+            className='timetable-actions'
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              width: '100vw',
+              height: '60px',
+              padding: '8px',
+              background: '#ff0000',
+              borderTop: '5px solid #00ff00',
+              zIndex: 9999999,
+              display: 'flex',
+              justifyContent: 'space-around',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.9)',
+              visibility: 'visible',
+              opacity: 1,
+            }}
+          >
+            <button
+              type='button'
+              className='action-btn ghost'
+              onClick={onClose}
+              style={{
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                minHeight: '35px',
+                minWidth: '60px',
+                borderRadius: '8px',
+                border: '3px solid #ffffff',
+                background: '#0000ff',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                maxWidth: '90px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.8)',
+                cursor: 'pointer',
+                visibility: 'visible',
+                opacity: 1,
+              }}
+            >
+              CLOSE
+            </button>
+            <button
+              type='button'
+              className='action-btn ghost'
+              onClick={() => {
+                console.log('📜 History button clicked - isAdmin:', isAdmin);
+                setShowHistory(true);
+                console.log('📜 showHistory set to true');
+              }}
+              style={{
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                minHeight: '35px',
+                minWidth: '60px',
+                borderRadius: '8px',
+                border: '3px solid #ffffff',
+                background: '#0000ff',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                maxWidth: '90px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.8)',
+                cursor: 'pointer',
+                visibility: 'visible',
+                opacity: 1,
+              }}
+            >
+              HISTORY
+            </button>
+            <button
+              type='button'
+              className='action-btn ghost'
+              onClick={handleResetClick}
+              style={{
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                minHeight: '35px',
+                minWidth: '60px',
+                borderRadius: '8px',
+                border: '3px solid #ffffff',
+                background: '#0000ff',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                maxWidth: '90px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.8)',
+                cursor: 'pointer',
+                visibility: 'visible',
+                opacity: 1,
+              }}
+            >
+              RESET
+            </button>
+            <button
+              type='button'
+              className='action-btn primary'
+              onClick={handleSaveClick}
+              style={{
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                minHeight: '35px',
+                minWidth: '60px',
+                borderRadius: '8px',
+                border: '3px solid #00ff00',
+                background: 'linear-gradient(45deg, #00ff00, #00cc00)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                maxWidth: '90px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                boxShadow: '0 4px 8px rgba(0,255,0,0.4)',
+                cursor: 'pointer',
+                visibility: 'visible',
+                opacity: 1,
+              }}
+            >
+              SAVE
+            </button>
+          </div>
+          {/* PURE CSS MOBILE FIX - NO JAVASCRIPT */}
           <style>{`
+            /* MOBILE TIMETABLE FIX - UNIVERSAL */
+            @media (max-width: 1080px), (max-width: 768px), (max-width: 480px), (max-width: 360px) {
+              .modal.timetable-modal {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
+                background: #000000 !important;
+                z-index: 999999 !important;
+                overflow: hidden !important;
+              }
+              
+              .timetable-container {
+                height: calc(100vh - 50px) !important;
+                overflow-y: auto !important;
+                padding: 20px !important;
+                padding-bottom: 0 !important;
+                margin: 0 !important;
+                background: #111111 !important;
+                -webkit-overflow-scrolling: touch !important;
+                overscroll-behavior: contain !important;
+              }
+              
+              .timetable-actions {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100vw !important;
+                height: 50px !important;
+                padding: 5px !important;
+                background: #ff0000 !important;
+                border-top: 2px solid #00ff00 !important;
+                z-index: 9999999 !important;
+                display: flex !important;
+                justify-content: space-around !important;
+                align-items: center !important;
+                gap: 5px !important;
+                box-shadow: 0 -3px 15px rgba(0,0,0,0.8) !important;
+              }
+              
+              .timetable-actions .action-btn {
+                padding: 4px 8px !important;
+                font-size: 10px !important;
+                font-weight: bold !important;
+                min-height: 30px !important;
+                min-width: 50px !important;
+                border-radius: 5px !important;
+                border: 1px solid #ffffff !important;
+                background: #0000ff !important;
+                color: #ffffff !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex: 1 !important;
+                max-width: 80px !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.6) !important;
+                cursor: pointer !important;
+                transition: all 0.3s ease !important;
+              }
+              
+              .timetable-actions .action-btn:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 8px 16px rgba(0,0,0,0.8) !important;
+              }
+              
+              .timetable-actions .action-btn.primary {
+                background: linear-gradient(45deg, #00ff00, #00cc00) !important;
+                border-color: #00ff00 !important;
+                box-shadow: 0 6px 12px rgba(0,255,0,0.4) !important;
+              }
+              
+              .timetable-actions .action-btn.primary:hover {
+                background: linear-gradient(45deg, #00cc00, #009900) !important;
+                box-shadow: 0 8px 16px rgba(0,255,0,0.6) !important;
+              }
+              
+              /* FORCE REMOVE ALL EXTRA SPACE */
+              .prayer-summary {
+                margin-bottom: 0 !important;
+                padding-bottom: 0 !important;
+              }
+              
+              .prayer-list {
+                margin-bottom: 0 !important;
+                padding-bottom: 0 !important;
+              }
+              
+              .prayer-item:last-child {
+                margin-bottom: 0 !important;
+                padding-bottom: 0 !important;
+              }
+            }
+            
+            /* FALLBACK CSS - NO MEDIA QUERY - FORCE APPLY */
+            .modal.timetable-modal {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 100vw !important;
+              height: 100vh !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border-radius: 0 !important;
+              background: #000000 !important;
+              z-index: 999999 !important;
+              overflow: hidden !important;
+            }
+            
+            .timetable-container {
+              height: calc(100vh - 60px) !important;
+              overflow-y: auto !important;
+              padding: 20px !important;
+              padding-bottom: 0 !important;
+              margin: 0 !important;
+              background: #111111 !important;
+              -webkit-overflow-scrolling: touch !important;
+              overscroll-behavior: contain !important;
+            }
+            
+            .timetable-actions {
+              position: fixed !important;
+              bottom: 0 !important;
+              left: 0 !important;
+              right: 0 !important;
+              width: 100vw !important;
+              height: 60px !important;
+              padding: 8px !important;
+              background: #ff0000 !important;
+              border-top: 5px solid #00ff00 !important;
+              z-index: 9999999 !important;
+              display: flex !important;
+              justify-content: space-around !important;
+              align-items: center !important;
+              gap: 8px !important;
+              box-shadow: 0 -10px 30px rgba(0,0,0,0.9) !important;
+              visibility: visible !important;
+              opacity: 1 !important;
+            }
+            
+            .timetable-actions .action-btn {
+              padding: 6px 10px !important;
+              font-size: 12px !important;
+              font-weight: bold !important;
+              min-height: 35px !important;
+              min-width: 60px !important;
+              border-radius: 8px !important;
+              border: 3px solid #ffffff !important;
+              background: #0000ff !important;
+              color: #ffffff !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              flex: 1 !important;
+              max-width: 90px !important;
+              text-transform: uppercase !important;
+              letter-spacing: 1px !important;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.8) !important;
+              cursor: pointer !important;
+              transition: all 0.3s ease !important;
+              visibility: visible !important;
+              opacity: 1 !important;
+            }
+            
+            .timetable-actions .action-btn.primary {
+              background: linear-gradient(45deg, #00ff00, #00cc00) !important;
+              border-color: #00ff00 !important;
+              box-shadow: 0 2px 5px rgba(0,255,0,0.4) !important;
+            }
+            
+            /* Premium CSS Styles - Converted to inline styles */
             .modal-backdrop {
               position: fixed;
               top: 0;
@@ -1002,12 +1311,98 @@ const Modal = ({
               z-index: 100000;
             }
 
+            /* MOBILE TIMETABLE MODAL - FORCE FULL SCREEN */
+            @media (max-width: 768px) {
+              .modal.timetable-modal {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: none !important;
+                max-height: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                background: #000000 !important;
+              }
+
+              .timetable-container {
+                height: calc(100vh - 80px) !important;
+                overflow-y: auto !important;
+                padding-bottom: 80px !important;
+              }
+
+              .timetable-actions {
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                height: 80px !important;
+                padding: 15px 20px !important;
+                background: #ff0000 !important;
+                border-top: 4px solid #00ff00 !important;
+                z-index: 999999 !important;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                gap: 12px !important;
+                flex-wrap: nowrap !important;
+                margin: 0 !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.9) !important;
+              }
+
+              .action-btn {
+                padding: 14px 18px !important;
+                font-size: 0.9rem !important;
+                font-weight: 700 !important;
+                min-height: 50px !important;
+                min-width: 85px !important;
+                border-radius: 12px !important;
+                flex: 1 !important;
+                max-width: 115px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                white-space: nowrap !important;
+                flex-shrink: 0 !important;
+                touch-action: manipulation !important;
+                -webkit-tap-highlight-color: transparent !important;
+                border: 3px solid #ffffff !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+                background: #0000ff !important;
+                color: #ffffff !important;
+              }
+
+              .action-btn.primary {
+                background: linear-gradient(135deg, #00d4ff, #0099cc) !important;
+                color: #ffffff !important;
+                box-shadow: 0 6px 20px rgba(0, 212, 255, 0.7) !important;
+                border: 3px solid #00d4ff !important;
+                flex: 1.3 !important;
+                max-width: 125px !important;
+              }
+
+              .action-btn.ghost {
+                background: rgba(0, 212, 255, 0.5) !important;
+                color: #ffffff !important;
+                border: 3px solid #00d4ff !important;
+                box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4) !important;
+              }
+            }
+
             .timetable-modal {
               padding: 0;
             }
 
             .timetable-container {
-              background: rgba(0, 0, 0, 0.4);
+              background: rgba(0, 0, 0, 0.2);
               backdrop-filter: blur(25px);
               border-radius: 20px;
               overflow: hidden;
@@ -1069,12 +1464,13 @@ const Modal = ({
 
             .timetable-content {
               padding: 20px;
-              background: rgba(0, 0, 0, 0.3);
+              background: rgba(0, 0, 0, 0.1);
               flex: 1;
               overflow-y: auto;
               max-height: calc(95vh - 280px);
               -webkit-overflow-scrolling: touch;
               overscroll-behavior: contain;
+              backdrop-filter: blur(10px);
             }
 
             .note-section {
@@ -1241,9 +1637,9 @@ const Modal = ({
 
             .timetable-actions {
               display: flex;
-              gap: 10px;
+              gap: 8px;
               justify-content: center;
-              padding: 15px 20px;
+              padding: 12px 16px;
               border-top: 1px solid rgba(0, 212, 255, 0.2);
               background: rgba(0, 0, 0, 0.5);
               flex-wrap: wrap;
@@ -1256,15 +1652,17 @@ const Modal = ({
             .action-btn {
               display: flex;
               align-items: center;
-              gap: 6px;
-              padding: 8px 15px;
+              gap: 4px;
+              padding: 6px 12px;
               border: none;
-              border-radius: 8px;
-              font-size: 0.85rem;
+              border-radius: 6px;
+              font-size: 0.8rem;
               font-weight: 600;
               cursor: pointer;
               transition: all 0.3s ease;
               backdrop-filter: blur(10px);
+              min-width: 60px;
+              justify-content: center;
             }
 
             .action-btn.ghost {
@@ -1291,182 +1689,419 @@ const Modal = ({
               box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
             }
 
-            /* Responsive Design */
+            /* Mobile Responsive Design */
             @media (max-width: 768px) {
               .modal {
-                width: 95%;
-                max-height: 98vh;
-                overflow: hidden;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                overflow: hidden !important;
+                z-index: 99999 !important;
+                background: transparent !important;
               }
 
               .timetable-container {
-                max-height: 98vh;
-                overflow: hidden;
+                width: 100% !important;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: visible !important;
+                position: relative !important;
+                background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460) !important;
+                padding-bottom: 0 !important;
+                justify-content: flex-start !important;
               }
 
               .timetable-header {
-                padding: 15px;
-                flex-shrink: 0;
+                padding: 12px !important;
+                flex-shrink: 0 !important;
+                min-height: 60px !important;
+                background: linear-gradient(135deg, #00d4ff, #0099cc, #006699) !important;
               }
 
               .ayah-text {
-                font-size: 1.3rem;
+                font-size: 1rem !important;
+                line-height: 1.3 !important;
+                margin-bottom: 4px !important;
+              }
+
+              .ayah-ref {
+                font-size: 0.7rem !important;
               }
 
               .timetable-content {
-                padding: 15px;
-                max-height: calc(98vh - 260px);
-                -webkit-overflow-scrolling: touch;
-                overscroll-behavior: contain;
-                overflow-y: auto;
+                flex: 1 !important;
+                padding: 12px !important;
+                padding-bottom: 120px !important;
+                overflow-y: scroll !important;
+                -webkit-overflow-scrolling: touch !important;
+                background: transparent !important;
+                backdrop-filter: none !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                height: auto !important;
+                position: relative !important;
+              }
+
+              .note-section {
+                margin-bottom: 12px !important;
+              }
+
+              .note-content {
+                padding: 8px !important;
+                font-size: 0.8rem !important;
+                line-height: 1.3 !important;
               }
 
               .timetable-grid {
-                grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-                gap: 10px;
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+                margin-bottom: 15px !important;
+              }
+
+              .time-field {
+                padding: 8px !important;
+                gap: 4px !important;
+                background: rgba(0, 0, 0, 0.4) !important;
+                border: 1px solid rgba(0, 212, 255, 0.2) !important;
+                border-radius: 8px !important;
+              }
+
+              .time-field label {
+                font-size: 0.8rem !important;
+                color: #00d4ff !important;
+                font-weight: 600 !important;
+              }
+
+              .time-field input[type='time'] {
+                padding: 6px 8px !important;
+                font-size: 0.85rem !important;
+                min-height: 36px !important;
+                background: rgba(255, 255, 255, 0.9) !important;
+                border: 1px solid rgba(0, 212, 255, 0.3) !important;
+                border-radius: 4px !important;
+              }
+
+              .prayer-summary {
+                margin-top: 12px !important;
+                margin-bottom: 20px !important;
+                padding-bottom: 20px !important;
+              }
+
+              .summary-heading {
+                padding: 8px !important;
+                margin-bottom: 8px !important;
+                background: rgba(0, 212, 255, 0.1) !important;
+                border: 1px solid rgba(0, 212, 255, 0.3) !important;
+                border-radius: 8px !important;
+              }
+
+              .summary-heading .heading-title {
+                font-size: 1rem !important;
+                color: #00d4ff !important;
+              }
+
+              .summary-heading .heading-sub {
+                font-size: 0.7rem !important;
+                color: #00d4ff !important;
               }
 
               .prayer-item {
-                grid-template-columns: 60px 50px 1fr;
-                gap: 10px;
-                padding: 10px;
+                grid-template-columns: 60px 50px 1fr !important;
+                gap: 8px !important;
+                padding: 8px !important;
+                margin-bottom: 8px !important;
+                background: rgba(0, 0, 0, 0.4) !important;
+                border: 1px solid rgba(0, 212, 255, 0.2) !important;
+                border-radius: 8px !important;
               }
 
-              .timetable-actions {
-                flex-direction: column;
-                gap: 6px;
-                padding: 12px;
-                position: sticky;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.95);
-                backdrop-filter: blur(15px);
-                border-top: 1px solid rgba(0, 212, 255, 0.3);
-                z-index: 20;
-                margin-top: 8px;
+              .prayer-name {
+                font-size: 0.8rem !important;
+                color: #00d4ff !important;
+                font-weight: 600 !important;
               }
 
-              .action-btn {
-                padding: 8px 12px;
-                font-size: 0.85rem;
-                gap: 4px;
-                min-height: 40px;
-                border-radius: 8px;
-                font-weight: 600;
-              }
-            }
-
-            /* Medium mobile breakpoint */
-            @media (max-width: 600px) {
-              .timetable-actions {
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 5px;
-                padding: 10px;
-                justify-content: center;
-                position: sticky;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.95);
-                backdrop-filter: blur(15px);
-                border-top: 1px solid rgba(0, 212, 255, 0.3);
-                z-index: 20;
-                margin-top: 8px;
-              }
-
-              .action-btn {
-                padding: 8px 12px;
-                font-size: 0.8rem;
-                gap: 4px;
-                min-width: 70px;
-                min-height: 40px;
-                flex: 1;
-                max-width: 90px;
-                border-radius: 8px;
-                font-weight: 600;
-              }
-
-              .action-btn.primary {
-                flex: 1.5;
-                max-width: 110px;
-              }
-            }
-
-            @media (max-width: 480px) {
-              .modal {
-                width: 98%;
-                border-radius: 15px;
-                max-height: 100vh;
-                overflow: hidden;
-              }
-
-              .timetable-container {
-                max-height: 100vh;
-                overflow: hidden;
-              }
-
-              .timetable-header {
-                padding: 12px;
-                flex-shrink: 0;
-              }
-
-              .ayah-text {
-                font-size: 1.1rem;
-              }
-
-              .timetable-content {
-                padding: 12px;
-                max-height: calc(100vh - 240px);
-                overflow-y: auto;
-              }
-
-              .timetable-grid {
-                grid-template-columns: 1fr;
-                gap: 8px;
-              }
-
-              .prayer-item {
-                grid-template-columns: 1fr;
-                gap: 6px;
-                text-align: center;
-              }
-
-              .prayer-name,
               .prayer-time {
-                text-align: center;
+                font-size: 0.85rem !important;
+                color: #00ff88 !important;
+                font-weight: 600 !important;
               }
 
-              /* Ultra-compact buttons for small mobile */
+              .prayer-quote {
+                font-size: 0.75rem !important;
+                line-height: 1.2 !important;
+                color: rgba(255, 255, 255, 0.9) !important;
+              }
+
               .timetable-actions {
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 4px;
-                padding: 8px;
-                justify-content: center;
-                position: sticky;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.95);
-                backdrop-filter: blur(15px);
-                border-top: 1px solid rgba(0, 212, 255, 0.3);
-                z-index: 20;
-                margin-top: 8px;
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                padding: 10px 8px !important;
+                background: rgba(0, 0, 0, 0.95) !important;
+                backdrop-filter: blur(15px) !important;
+                border-top: 1px solid rgba(0, 212, 255, 0.3) !important;
+                z-index: 1000 !important;
+                display: flex !important;
+                justify-content: center !important;
+                gap: 6px !important;
+                flex-wrap: nowrap !important;
+                min-height: 55px !important;
+                margin: 0 !important;
+                width: 100vw !important;
+                flex-shrink: 0 !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
               }
 
               .action-btn {
-                padding: 8px 12px;
-                font-size: 0.8rem;
-                gap: 4px;
-                min-width: 70px;
-                min-height: 40px;
-                flex: 1;
-                max-width: 90px;
-                border-radius: 8px;
-                font-weight: 600;
+                padding: 8px 10px !important;
+                font-size: 0.75rem !important;
+                gap: 3px !important;
+                min-height: 38px !important;
+                min-width: 65px !important;
+                border-radius: 6px !important;
+                font-weight: 600 !important;
+                flex: 1 !important;
+                max-width: 90px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                white-space: nowrap !important;
+                flex-shrink: 0 !important;
+                touch-action: manipulation !important;
+                -webkit-tap-highlight-color: transparent !important;
               }
 
               .action-btn.primary {
-                flex: 2;
-                max-width: 120px;
+                flex: 1.3 !important;
+                max-width: 110px !important;
+                background: linear-gradient(135deg, #00d4ff, #0099cc) !important;
+                color: white !important;
+                box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3) !important;
+              }
+
+              .action-btn.ghost {
+                background: rgba(0, 212, 255, 0.2) !important;
+                color: #00d4ff !important;
+                border: 1px solid rgba(0, 212, 255, 0.4) !important;
               }
             }
+
+            /* Small Mobile Devices - Extra Small Screens */
+            @media (max-width: 480px) {
+              .timetable-actions {
+                padding: 8px 6px !important;
+                gap: 4px !important;
+                min-height: 50px !important;
+              }
+
+              .action-btn {
+                padding: 6px 8px !important;
+                font-size: 0.7rem !important;
+                min-height: 35px !important;
+                min-width: 60px !important;
+                max-width: 80px !important;
+              }
+
+              .action-btn.primary {
+                max-width: 100px !important;
+              }
+            }
+
+            /* Extra Small Mobile Devices */
+            @media (max-width: 360px) {
+              .timetable-actions {
+                padding: 6px 4px !important;
+                gap: 3px !important;
+                min-height: 45px !important;
+              }
+
+              .action-btn {
+                padding: 5px 6px !important;
+                font-size: 0.65rem !important;
+                min-height: 32px !important;
+                min-width: 55px !important;
+                max-width: 70px !important;
+              }
+
+              .action-btn.primary {
+                max-width: 85px !important;
+              }
+            }
+
+            /* Physical Mobile Device Fix - Higher Priority */
+            @media (max-width: 1080px) and (max-height: 2400px), 
+                   (max-width: 1080px) and (orientation: portrait),
+                   (max-width: 1080px) and (-webkit-min-device-pixel-ratio: 2) {
+              .timetable-actions {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                padding: 12px 8px !important;
+                background: rgba(0, 0, 0, 0.98) !important;
+                backdrop-filter: blur(20px) !important;
+                border-top: 2px solid rgba(0, 212, 255, 0.5) !important;
+                z-index: 9999 !important;
+                display: flex !important;
+                justify-content: center !important;
+                gap: 8px !important;
+                flex-wrap: nowrap !important;
+                min-height: 65px !important;
+                margin: 0 !important;
+                width: 100vw !important;
+                flex-shrink: 0 !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5) !important;
+              }
+
+              .action-btn {
+                padding: 10px 12px !important;
+                font-size: 0.8rem !important;
+                gap: 4px !important;
+                min-height: 45px !important;
+                min-width: 75px !important;
+                border-radius: 8px !important;
+                font-weight: 600 !important;
+                flex: 1 !important;
+                max-width: 100px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                white-space: nowrap !important;
+                flex-shrink: 0 !important;
+                touch-action: manipulation !important;
+                -webkit-tap-highlight-color: transparent !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+              }
+
+              .action-btn.primary {
+                flex: 1.3 !important;
+                max-width: 120px !important;
+                background: linear-gradient(135deg, #00d4ff, #0099cc) !important;
+                color: white !important;
+                box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4) !important;
+                border: 1px solid rgba(0, 212, 255, 0.6) !important;
+              }
+
+              .action-btn.ghost {
+                background: rgba(0, 212, 255, 0.25) !important;
+                color: #00d4ff !important;
+                border: 1px solid rgba(0, 212, 255, 0.5) !important;
+              }
+            }
+
+            /* OnePlus Nord CE 3 Lite 5G Specific Fix */
+            @media (max-width: 1080px) and (max-height: 2400px) {
+              .timetable-content {
+                padding-bottom: 200px !important;
+                overflow-y: scroll !important;
+                -webkit-overflow-scrolling: touch !important;
+                height: calc(100vh - 140px) !important;
+              }
+
+              .timetable-actions {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                padding: 20px 15px !important;
+                background: #000000 !important;
+                backdrop-filter: blur(25px) !important;
+                border-top: 4px solid #00d4ff !important;
+                z-index: 999999 !important;
+                display: flex !important;
+                justify-content: center !important;
+                gap: 12px !important;
+                flex-wrap: nowrap !important;
+                min-height: 80px !important;
+                margin: 0 !important;
+                width: 100vw !important;
+                flex-shrink: 0 !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.9) !important;
+                transform: translateZ(0) !important;
+                -webkit-transform: translateZ(0) !important;
+              }
+
+              .action-btn {
+                padding: 15px 18px !important;
+                font-size: 0.9rem !important;
+                gap: 6px !important;
+                min-height: 55px !important;
+                min-width: 90px !important;
+                border-radius: 12px !important;
+                font-weight: 700 !important;
+                flex: 1 !important;
+                max-width: 120px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                white-space: nowrap !important;
+                flex-shrink: 0 !important;
+                touch-action: manipulation !important;
+                -webkit-tap-highlight-color: transparent !important;
+                border: 3px solid #ffffff !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+              }
+
+              .action-btn.primary {
+                flex: 1.5 !important;
+                max-width: 140px !important;
+                background: linear-gradient(135deg, #00d4ff, #0099cc) !important;
+                color: #ffffff !important;
+                box-shadow: 0 8px 25px rgba(0, 212, 255, 0.6) !important;
+                border: 3px solid #00d4ff !important;
+              }
+
+              .action-btn.ghost {
+                background: rgba(0, 212, 255, 0.4) !important;
+                color: #00d4ff !important;
+                border: 3px solid #00d4ff !important;
+                box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3) !important;
+              }
+            }
+
+
+            /* FORCE REMOVE ALL EXTRA SPACE */
+            .timetable-container {
+              padding-bottom: 0px !important;
+              margin-bottom: 0px !important;
+            }
+            
+            .prayer-summary {
+              margin-bottom: 0px !important;
+              padding-bottom: 0px !important;
+            }
+            
+            .prayer-list {
+              margin-bottom: 0px !important;
+              padding-bottom: 0px !important;
+            }
+            
+            .prayer-item:last-child {
+              margin-bottom: 0px !important;
+              padding-bottom: 0px !important;
+            }
+
+            /* End of Mobile Styles */
           `}</style>
         </div>
       </div>
@@ -1722,7 +2357,14 @@ const Modal = ({
 
     return (
       <div className='modal-backdrop contact-admin-modal-backdrop'>
-        <div className='modal contact-admin-modal'>
+        <div
+          className='modal contact-admin-modal'
+          style={{
+            maxHeight: '95vh',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <div className='modal-header'>
             <h3>📧 Contact Admin</h3>
             <button
@@ -1813,7 +2455,13 @@ const Modal = ({
               e.preventDefault();
               handleSend();
             }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              overflowY: 'auto',
+              paddingRight: 4,
+            }}
           >
             {/* Category Selection */}
             <div>

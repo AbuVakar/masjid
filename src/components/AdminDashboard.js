@@ -118,176 +118,180 @@ const AdminDashboard = ({ onClose }) => {
         </button>
       </div>
 
-      <div className='admin-tabs'>
-        <button
-          className={activeTab === 'overview' ? 'active' : ''}
-          onClick={() => setActiveTab('overview')}
-        >
-          📊 Overview
-        </button>
-        <button
-          className={activeTab === 'users' ? 'active' : ''}
-          onClick={() => setActiveTab('users')}
-        >
-          👥 Users
-        </button>
-        <button
-          className={activeTab === 'audit' ? 'active' : ''}
-          onClick={() => setActiveTab('audit')}
-        >
-          📋 Audit Logs
-        </button>
-        <button
-          className={activeTab === 'activities' ? 'active' : ''}
-          onClick={() => setActiveTab('activities')}
-        >
-          📈 Activity Logs
-        </button>
-        <button
-          className={activeTab === 'backup' ? 'active' : ''}
-          onClick={() => setActiveTab('backup')}
-        >
-          💾 Backup
-        </button>
-      </div>
+      <div className='admin-layout'>
+        <div className='admin-tabs'>
+          <button
+            className={`tab-item ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            📊 Overview
+          </button>
+          <button
+            className={`tab-item ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+          >
+            👥 Users
+          </button>
+          <button
+            className={`tab-item ${activeTab === 'audit' ? 'active' : ''}`}
+            onClick={() => setActiveTab('audit')}
+          >
+            📋 Audit Logs
+          </button>
+          <button
+            className={`tab-item ${activeTab === 'activities' ? 'active' : ''}`}
+            onClick={() => setActiveTab('activities')}
+          >
+            📈 Activity Logs
+          </button>
+          <button
+            className={`tab-item ${activeTab === 'backup' ? 'active' : ''}`}
+            onClick={() => setActiveTab('backup')}
+          >
+            💾 Backup
+          </button>
+        </div>
 
-      <div className='admin-content'>
-        {loading && <div className='loading'>Loading...</div>}
+        <div className='admin-content'>
+          {loading && <div className='loading'>Loading...</div>}
 
-        {activeTab === 'overview' && stats && (
-          <div className='overview-section'>
-            <h3>System Statistics</h3>
-            <div className='stats-grid'>
-              <div className='stat-card'>
-                <div className='stat-number'>{stats.users}</div>
-                <div className='stat-label'>Total Users</div>
-              </div>
-              <div className='stat-card'>
-                <div className='stat-number'>{stats.houses}</div>
-                <div className='stat-label'>Total Houses</div>
-              </div>
-              <div className='stat-card'>
-                <div className='stat-number'>{stats.members}</div>
-                <div className='stat-label'>Total Members</div>
-              </div>
-              <div className='stat-card'>
-                <div className='stat-number'>{stats.resources}</div>
-                <div className='stat-label'>Total Resources</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className='users-section'>
-            <h3>User Management</h3>
-            <div className='users-table'>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user._id}>
-                      <td>{user.username}</td>
-                      <td>{user.name}</td>
-                      <td>{user.email || 'N/A'}</td>
-                      <td>
-                        {user.username === 'admin' ? (
-                          <span className='protected-admin'>
-                            👑 Protected Admin
-                          </span>
-                        ) : (
-                          <select
-                            value={user.role}
-                            onChange={(e) =>
-                              handleUpdateUserRole(user._id, e.target.value)
-                            }
-                            className='role-select'
-                          >
-                            <option value='user'>User</option>
-                            <option value='admin'>Admin</option>
-                          </select>
-                        )}
-                      </td>
-                      <td>
-                        {user.username === 'admin' ? (
-                          <span className='protected-admin'>🔒 Protected</span>
-                        ) : (
-                          <button
-                            onClick={() => handleDeleteUser(user._id)}
-                            className='delete-btn'
-                            disabled={false}
-                          >
-                            🗑️ Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'audit' && (
-          <div className='audit-section'>
-            <h3>Recent Audit Logs</h3>
-            <div className='audit-logs'>
-              {auditLogs.map((log) => (
-                <div key={log._id} className='audit-log'>
-                  <div className='log-header'>
-                    <span className='log-action'>{log.action}</span>
-                    <span className='log-time'>
-                      {new Date(log.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className='log-details'>
-                    <span>User: {log.username}</span>
-                    <span className={log.success ? 'success' : 'error'}>
-                      {log.success ? '✅ Success' : '❌ Failed'}
-                    </span>
-                  </div>
+          {activeTab === 'overview' && stats && (
+            <div className='overview-section'>
+              <h3>System Statistics</h3>
+              <div className='stats-grid'>
+                <div className='stat-card'>
+                  <div className='stat-number'>{stats.users}</div>
+                  <div className='stat-label'>Total Users</div>
                 </div>
-              ))}
+                <div className='stat-card'>
+                  <div className='stat-number'>{stats.houses}</div>
+                  <div className='stat-label'>Total Houses</div>
+                </div>
+                <div className='stat-card'>
+                  <div className='stat-number'>{stats.members}</div>
+                  <div className='stat-label'>Total Members</div>
+                </div>
+                <div className='stat-card'>
+                  <div className='stat-number'>{stats.resources}</div>
+                  <div className='stat-label'>Total Resources</div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === 'activities' && (
-          <div className='activities-section'>
-            <ActivityLogs />
-          </div>
-        )}
-
-        {activeTab === 'backup' && (
-          <div className='backup-section'>
-            <h3>System Backup</h3>
-            <div className='backup-actions'>
-              <button onClick={handleBackupData} className='backup-btn'>
-                💾 Download Full Backup
-              </button>
-              <p className='backup-info'>
-                This will download a complete backup of all system data
-                including:
-                <br />
-                • Users (without passwords)
-                <br />
-                • Houses and Members
-                <br />
-                • Resources
-                <br />• Prayer Times
-              </p>
+          {activeTab === 'users' && (
+            <div className='users-section'>
+              <h3>User Management</h3>
+              <div className='users-table'>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user._id}>
+                        <td>{user.username}</td>
+                        <td>{user.name}</td>
+                        <td>{user.email || 'N/A'}</td>
+                        <td>
+                          {user.username === 'admin' ? (
+                            <span className='protected-admin'>
+                              👑 Protected Admin
+                            </span>
+                          ) : (
+                            <select
+                              value={user.role}
+                              onChange={(e) =>
+                                handleUpdateUserRole(user._id, e.target.value)
+                              }
+                              className='role-select'
+                            >
+                              <option value='user'>User</option>
+                              <option value='admin'>Admin</option>
+                            </select>
+                          )}
+                        </td>
+                        <td>
+                          {user.username === 'admin' ? (
+                            <span className='protected-admin'>
+                              🔒 Protected
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleDeleteUser(user._id)}
+                              className='delete-btn'
+                              disabled={false}
+                            >
+                              🗑️ Delete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {activeTab === 'audit' && (
+            <div className='audit-section'>
+              <h3>Recent Audit Logs</h3>
+              <div className='audit-logs'>
+                {auditLogs.map((log) => (
+                  <div key={log._id} className='audit-log'>
+                    <div className='log-header'>
+                      <span className='log-action'>{log.action}</span>
+                      <span className='log-time'>
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className='log-details'>
+                      <span>User: {log.username}</span>
+                      <span className={log.success ? 'success' : 'error'}>
+                        {log.success ? '✅ Success' : '❌ Failed'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'activities' && (
+            <div className='activities-section'>
+              <ActivityLogs />
+            </div>
+          )}
+
+          {activeTab === 'backup' && (
+            <div className='backup-section'>
+              <h3>System Backup</h3>
+              <div className='backup-actions'>
+                <button onClick={handleBackupData} className='backup-btn'>
+                  💾 Download Full Backup
+                </button>
+                <p className='backup-info'>
+                  This will download a complete backup of all system data
+                  including:
+                  <br />
+                  • Users (without passwords)
+                  <br />
+                  • Houses and Members
+                  <br />
+                  • Resources
+                  <br />• Prayer Times
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <style>{`
@@ -299,6 +303,7 @@ const AdminDashboard = ({ onClose }) => {
           width: 100%;
           height: 100%;
           overflow-y: auto;
+          overflow-x: hidden;
         }
 
         .admin-header {
@@ -326,25 +331,45 @@ const AdminDashboard = ({ onClose }) => {
           font-size: 16px;
         }
 
-        .admin-tabs {
+        .admin-layout {
           display: flex;
-          gap: 10px;
-          margin-bottom: 20px;
+          flex-direction: column;
+          gap: 16px;
         }
 
-        .admin-tabs button {
-          background: rgba(255, 255, 255, 0.1);
-          border: none;
-          color: white;
-          padding: 10px 20px;
+        .admin-tabs {
+          position: sticky;
+          top: 0;
+          z-index: 2;
+          display: flex;
+          gap: 12px;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          padding: 10px 0;
+          margin: 0;
+          background: rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(8px);
+        }
+
+        .tab-item {
+          background: rgba(255, 255, 255, 0.12);
+          color: #fff;
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 10px;
+          padding: 10px 16px;
+          white-space: nowrap;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
         }
 
-        .admin-tabs button.active {
-          background: rgba(255, 255, 255, 0.3);
-          transform: scale(1.05);
+        .tab-item:hover {
+          background: rgba(255, 255, 255, 0.18);
+          transform: translateY(-1px);
+        }
+
+        .tab-item.active {
+          background: rgba(255, 255, 255, 0.28);
+          border-color: rgba(255, 255, 255, 0.4);
         }
 
         .admin-content {
@@ -352,11 +377,16 @@ const AdminDashboard = ({ onClose }) => {
           border-radius: 15px;
           padding: 20px;
           backdrop-filter: blur(10px);
+          max-height: none;
+          width: 100%;
+          overflow-x: hidden;
+          overflow-y: visible;
+          box-sizing: border-box;
         }
 
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 20px;
           margin-top: 20px;
         }
@@ -380,10 +410,67 @@ const AdminDashboard = ({ onClose }) => {
           opacity: 0.8;
         }
 
+        .users-table {
+          width: 100%;
+          overflow-x: auto;
+        }
         .users-table table {
           width: 100%;
           border-collapse: collapse;
           margin-top: 20px;
+          table-layout: fixed;
+          min-width: 800px;
+        }
+
+        /* Desktop layout improvements */
+        @media (min-width: 1024px) {
+          .admin-dashboard {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+            width: 100vw;
+            min-height: 100vh;
+            height: 100vh;
+            border-radius: 0;
+            padding: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+          }
+
+          .admin-header {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            padding: 20px 24px;
+            margin-bottom: 0;
+            background: rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(8px);
+          }
+
+          .admin-tabs { top: 64px; }
+
+          .admin-layout {
+            height: calc(100vh - 72px);
+            overflow: visible;
+            padding: 20px 24px;
+            box-sizing: border-box;
+          }
+
+          .admin-content {
+            width: 100%;
+            max-height: none;
+            overflow: visible;
+            padding: 24px;
+          }
+
+          .users-table table { table-layout: fixed; }
+          .users-table th, .users-table td {
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+          }
         }
 
         .users-table th,
@@ -445,14 +532,8 @@ const AdminDashboard = ({ onClose }) => {
           margin-bottom: 10px;
         }
 
-        .log-action {
-          font-weight: bold;
-        }
-
-        .log-time {
-          opacity: 0.7;
-          font-size: 12px;
-        }
+        .log-action { font-weight: bold; }
+        .log-time { opacity: 0.7; font-size: 12px; }
 
         .log-details {
           display: flex;
@@ -460,18 +541,10 @@ const AdminDashboard = ({ onClose }) => {
           font-size: 14px;
         }
 
-        .success {
-          color: #2ed573;
-        }
+        .success { color: #2ed573; }
+        .error { color: #ff4757; }
 
-        .error {
-          color: #ff4757;
-        }
-
-        .backup-actions {
-          text-align: center;
-        }
-
+        .backup-actions { text-align: center; }
         .backup-btn {
           background: #2ed573;
           border: none;
@@ -483,269 +556,72 @@ const AdminDashboard = ({ onClose }) => {
           margin-bottom: 20px;
         }
 
-        .backup-info {
-          opacity: 0.8;
-          line-height: 1.6;
-        }
+        .backup-info { opacity: 0.8; line-height: 1.6; }
 
-        .loading {
-          text-align: center;
-          padding: 40px;
-          font-size: 18px;
-        }
+        .loading { text-align: center; padding: 40px; font-size: 18px; }
 
         /* ===== MOBILE RESPONSIVENESS FIXES ===== */
         
         /* Tablet and Mobile Responsive Design */
+        @media (max-width: 1024px) {
+          .admin-layout { grid-template-columns: 1fr; }
+          .admin-sidebar { position: static; height: auto; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
         @media (max-width: 768px) {
-          .admin-dashboard {
-            padding: 16px;
-            border-radius: 12px;
-          }
-
-          .admin-header {
-            flex-direction: column;
-            gap: 12px;
-            text-align: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-          }
-
-          .admin-header h2 {
-            font-size: 20px;
-          }
-
-          .close-btn {
-            padding: 6px 10px;
-            font-size: 14px;
-          }
-
-          .admin-tabs {
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
-          }
-
-          .admin-tabs button {
-            padding: 8px 16px;
-            font-size: 14px;
-            flex: 1;
-            min-width: 120px;
-          }
-
-          .admin-content {
-            padding: 16px;
-            border-radius: 12px;
-          }
-
-          .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-          }
-
-          .stat-card {
-            padding: 12px;
-          }
-
-          .stat-value {
-            font-size: 18px;
-          }
-
-          .stat-label {
-            font-size: 12px;
-          }
-
-          /* Users Table */
-          .users-table {
-            font-size: 12px;
-          }
-
-          .users-table th,
-          .users-table td {
-            padding: 6px 4px;
-          }
-
-          .users-table th {
-            font-size: 11px;
-          }
-
-          /* Action Buttons */
-          .edit-btn,
-          .delete-btn {
-            padding: 4px 8px;
-            font-size: 11px;
-          }
-
-          /* Protected Admin Badge */
-          .protected-admin {
-            padding: 3px 8px;
-            font-size: 10px;
-          }
-
-          /* Audit Logs */
-          .audit-logs {
-            max-height: 300px;
-          }
-
-          .audit-log {
-            padding: 12px;
-            margin-bottom: 8px;
-          }
-
-          .log-header {
-            flex-direction: column;
-            gap: 4px;
-            margin-bottom: 8px;
-          }
-
-          .log-action {
-            font-size: 13px;
-          }
-
-          .log-time {
-            font-size: 11px;
-          }
-
-          .log-details {
-            flex-direction: column;
-            gap: 4px;
-            font-size: 12px;
-          }
-
-          /* Backup Section */
-          .backup-btn {
-            padding: 12px 20px;
-            font-size: 14px;
-            margin-bottom: 16px;
-          }
-
-          .backup-info {
-            font-size: 13px;
-            line-height: 1.5;
-          }
-
-          .loading {
-            padding: 20px;
-            font-size: 16px;
-          }
+          .admin-dashboard { padding: 16px; border-radius: 12px; }
+          .admin-header { flex-direction: column; gap: 12px; text-align: center; margin-bottom: 16px; padding-bottom: 12px; }
+          .admin-header h2 { font-size: 20px; }
+          .close-btn { padding: 6px 10px; font-size: 14px; }
+          .admin-tabs { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+          .admin-tabs button { padding: 8px 16px; font-size: 14px; flex: 1; min-width: 120px; }
+          .admin-content { padding: 16px; border-radius: 12px; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .stat-card { padding: 12px; }
+          .stat-value { font-size: 18px; }
+          .stat-label { font-size: 12px; }
+          .users-table { font-size: 12px; }
+          .users-table th, .users-table td { padding: 6px 4px; }
+          .users-table th { font-size: 11px; }
+          .edit-btn, .delete-btn { padding: 4px 8px; font-size: 11px; }
+          .protected-admin { padding: 3px 8px; font-size: 10px; }
+          .audit-logs { max-height: 300px; }
+          .audit-log { padding: 12px; margin-bottom: 8px; }
+          .log-header { flex-direction: column; gap: 4px; margin-bottom: 8px; }
+          .log-action { font-size: 13px; }
+          .log-time { font-size: 11px; }
+          .log-details { flex-direction: column; gap: 4px; font-size: 12px; }
+          .backup-btn { padding: 12px 20px; font-size: 14px; margin-bottom: 16px; }
+          .backup-info { font-size: 13px; line-height: 1.5; }
+          .loading { padding: 20px; font-size: 16px; }
         }
 
         /* Small Mobile Optimizations */
         @media (max-width: 480px) {
-          .admin-dashboard {
-            padding: 12px;
-            border-radius: 8px;
-          }
-
-          .admin-header {
-            gap: 8px;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-          }
-
-          .admin-header h2 {
-            font-size: 18px;
-          }
-
-          .close-btn {
-            padding: 4px 8px;
-            font-size: 12px;
-          }
-
-          .admin-tabs {
-            gap: 6px;
-            margin-bottom: 12px;
-          }
-
-          .admin-tabs button {
-            padding: 6px 12px;
-            font-size: 12px;
-            min-width: 100px;
-          }
-
-          .admin-content {
-            padding: 12px;
-            border-radius: 8px;
-          }
-
-          /* Stats Grid - Single Column */
-          .stats-grid {
-            grid-template-columns: 1fr;
-            gap: 8px;
-          }
-
-          .stat-card {
-            padding: 10px;
-          }
-
-          .stat-value {
-            font-size: 16px;
-          }
-
-          .stat-label {
-            font-size: 11px;
-          }
-
-          /* Users Table */
-          .users-table {
-            font-size: 11px;
-          }
-
-          .users-table th,
-          .users-table td {
-            padding: 4px 2px;
-          }
-
-          .users-table th {
-            font-size: 10px;
-          }
-
-          /* Action Buttons */
-          .edit-btn,
-          .delete-btn {
-            padding: 3px 6px;
-            font-size: 10px;
-          }
-
-          /* Protected Admin Badge */
-          .protected-admin {
-            padding: 2px 6px;
-            font-size: 9px;
-          }
-
-          /* Audit Logs */
-          .audit-log {
-            padding: 8px;
-            margin-bottom: 6px;
-          }
-
-          .log-action {
-            font-size: 12px;
-          }
-
-          .log-time {
-            font-size: 10px;
-          }
-
-          .log-details {
-            font-size: 11px;
-          }
-
-          /* Backup Section */
-          .backup-btn {
-            padding: 10px 16px;
-            font-size: 13px;
-            margin-bottom: 12px;
-          }
-
-          .backup-info {
-            font-size: 12px;
-          }
-
-          .loading {
-            padding: 16px;
-            font-size: 14px;
-          }
+          .admin-dashboard { padding: 12px; border-radius: 8px; }
+          .admin-header { gap: 8px; margin-bottom: 12px; padding-bottom: 8px; }
+          .admin-header h2 { font-size: 18px; }
+          .close-btn { padding: 4px 8px; font-size: 12px; }
+          .admin-tabs { gap: 6px; margin-bottom: 12px; }
+          .admin-tabs button { padding: 6px 12px; font-size: 12px; min-width: 100px; }
+          .admin-content { padding: 12px; border-radius: 8px; }
+          .stats-grid { grid-template-columns: 1fr; gap: 8px; }
+          .stat-card { padding: 10px; }
+          .stat-value { font-size: 16px; }
+          .stat-label { font-size: 11px; }
+          .users-table { font-size: 11px; }
+          .users-table th, .users-table td { padding: 4px 2px; }
+          .users-table th { font-size: 10px; }
+          .edit-btn, .delete-btn { padding: 3px 6px; font-size: 10px; }
+          .protected-admin { padding: 2px 6px; font-size: 9px; }
+          .audit-log { padding: 8px; margin-bottom: 6px; }
+          .log-action { font-size: 12px; }
+          .log-time { font-size: 10px; }
+          .log-details { font-size: 11px; }
+          .backup-btn { padding: 10px 16px; font-size: 13px; margin-bottom: 12px; }
+          .backup-info { font-size: 12px; }
+          .loading { padding: 16px; font-size: 14px; }
         }
 
         /* ===== END MOBILE RESPONSIVENESS FIXES ===== */

@@ -56,7 +56,8 @@ app.use(
   cors({
     origin: [
       'http://localhost:3000',
-      'http://10.146.95.76:3000',
+      'http://10.113.136.76:3000',
+      'http://192.168.56.1:3000',
       // Allow all local network IPs for mobile testing
       /^http:\/\/192\.168\.\d+\.\d+:3000$/,
       /^http:\/\/10\.\d+\.\d+\.\d+:3000$/,
@@ -407,7 +408,7 @@ app.use(
 // Rate limiting with different limits for different endpoints
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit for development
   message: {
     error: 'Too many requests from this IP, please try again later.',
   },
@@ -417,9 +418,19 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 requests per windowMs for auth (increased for testing)
+  max: process.env.NODE_ENV === 'development' ? 100 : 20, // Higher limit for development
   message: {
     error: 'Too many authentication attempts, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const resourcesLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 500 : 50, // Higher limit for resources in development
+  message: {
+    error: 'Too many resource requests, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -430,6 +441,7 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api/', generalLimiter);
   app.use('/api/users/login', authLimiter);
   app.use('/api/users/register', authLimiter);
+  app.use('/api/resources', resourcesLimiter);
 }
 
 // Body parser middleware
