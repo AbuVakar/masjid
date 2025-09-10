@@ -15,6 +15,8 @@ import AdvancedNotificationSettings from './AdvancedNotificationSettings';
 import './AdvancedNotificationSettings.css';
 import NotificationTester from './NotificationTester';
 import './NotificationTester.css';
+import './MobileModalFixes.css';
+import mobileViewport from '../utils/mobileViewport';
 
 // Function to fetch sunset time from API with better error handling
 const fetchSunsetTime = async (
@@ -197,17 +199,27 @@ const Modal = ({
 
   // Prevent body scroll when modal is open
   useEffect(() => {
-    if (type) {
-      // Disable body scroll
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
+    let originalStyle = null;
 
-      // Re-enable body scroll when modal closes
-      return () => {
-        document.body.style.overflow = '';
-        document.body.style.touchAction = '';
-      };
+    if (type) {
+      // Apply mobile-optimized scroll prevention
+      originalStyle = mobileViewport.preventBodyScroll();
+
+      // Setup mobile viewport listener for dynamic updates
+      mobileViewport.setupMobileViewportListener();
+
+      console.log(
+        '📱 Modal opened - body scroll prevented, mobile viewport setup',
+      );
     }
+
+    // Re-enable body scroll when modal closes
+    return () => {
+      if (originalStyle) {
+        mobileViewport.restoreBodyScroll(originalStyle);
+        console.log('📱 Modal closed - body scroll restored');
+      }
+    };
   }, [type]);
 
   // Check for daily date change and update Maghrib time
@@ -797,28 +809,40 @@ const Modal = ({
       });
     };
 
+    // Get mobile-optimized positioning
+    const mobilePosition = mobileViewport.getMobileModalPosition();
+    const deviceInfo = mobileViewport.getMobileDeviceInfo();
+
     return (
       <div className='modal-backdrop timetable-modal-backdrop'>
         <div
           className='modal timetable-modal'
           style={{
             position: 'fixed',
-            top: 0,
+            top: mobilePosition.top,
             left: 0,
             width: '100vw',
-            height: '100vh',
+            height: mobilePosition.height,
+            maxHeight: mobilePosition.maxHeight,
             margin: 0,
             padding: 0,
             borderRadius: 0,
             background: '#000000',
             zIndex: 999999,
             overflow: 'hidden',
+            ...(deviceInfo.isOnePlus && {
+              // OnePlus-specific optimizations
+              transform: 'translateZ(0)',
+              WebkitTransform: 'translateZ(0)',
+              willChange: 'transform',
+            }),
           }}
         >
           <div
             className='timetable-container'
             style={{
-              height: 'calc(100vh - 60px)',
+              height: `calc(${mobilePosition.height} - 80px)`,
+              maxHeight: `calc(${mobilePosition.maxHeight} - 80px)`,
               overflowY: 'auto',
               padding: '20px',
               paddingBottom: '0px',
@@ -826,6 +850,11 @@ const Modal = ({
               background: '#111111',
               WebkitOverflowScrolling: 'touch',
               overscrollBehavior: 'contain',
+              ...(deviceInfo.isOnePlus && {
+                // OnePlus-specific scroll optimizations
+                transform: 'translateZ(0)',
+                WebkitTransform: 'translateZ(0)',
+              }),
             }}
           >
             <div className='timetable-header'>
@@ -963,22 +992,30 @@ const Modal = ({
             className='timetable-actions'
             style={{
               position: 'fixed',
-              bottom: 0,
+              bottom: mobilePosition.bottom,
               left: 0,
               right: 0,
               width: '100vw',
-              height: '60px',
-              padding: '8px',
-              background: '#ff0000',
-              borderTop: '5px solid #00ff00',
+              height: '80px',
+              padding: '12px',
+              background: '#000000',
+              borderTop: '3px solid #00d4ff',
               zIndex: 9999999,
               display: 'flex',
               justifyContent: 'space-around',
               alignItems: 'center',
               gap: '8px',
-              boxShadow: '0 -10px 30px rgba(0,0,0,0.9)',
+              boxShadow: '0 -8px 30px rgba(0,0,0,0.9)',
               visibility: 'visible',
               opacity: 1,
+              ...(deviceInfo.isOnePlus && {
+                // OnePlus-specific footer optimizations
+                transform: 'translateZ(0)',
+                WebkitTransform: 'translateZ(0)',
+                willChange: 'transform',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+              }),
             }}
           >
             <button
