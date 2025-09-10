@@ -30,9 +30,13 @@ import {
   ERROR_SEVERITY,
 } from './utils/errorHandler';
 import { apiService } from './services/api';
+import mobileViewport from './utils/mobileViewport';
 
 // Initialize error handling on app start
 initializeErrorHandling();
+
+// Initialize mobile viewport utilities
+mobileViewport.setupMobileViewportListener();
 
 function App() {
   const [showModal, setShowModal] = useState(false);
