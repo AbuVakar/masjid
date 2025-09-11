@@ -2,6 +2,14 @@
   publish = "build"
   command = "npm run build"
 
+# Service Worker should not be redirected
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Content-Type = "application/javascript"
+    Cache-Control = "no-cache"
+
+# SPA redirects (exclude service worker)
 [[redirects]]
   from = "/*"
   to = "/index.html"
