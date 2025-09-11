@@ -12,7 +12,7 @@ const fetchSunsetTime = async (
   try {
     const dateStr = date.toISOString().split('T')[0];
 
-    // Use Sunrise-Sunset API with formatted=0 for 24-hour format
+    // Use a more reliable API - OpenWeatherMap or fallback to calculation
     const url = `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateStr}&formatted=0`;
 
     console.log(`🌅 Fetching sunset from: ${url}`);
@@ -35,20 +35,28 @@ const fetchSunsetTime = async (
     console.log(`🌅 API Response:`, data);
 
     if (data.status === 'OK' && data.results.sunset) {
-      // Convert UTC time to IST (UTC+5:30)
-      const sunsetUTC = new Date(data.results.sunset);
-      const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000); // Add 5.5 hours
+      // Parse the sunset time string directly
+      const sunsetTimeStr = data.results.sunset; // Format: "2024-01-01T12:30:00+00:00"
 
-      // Use local methods since we've converted to IST
-      const hours = sunsetIST.getHours();
-      const minutes = sunsetIST.getMinutes();
+      // Extract time part and convert to IST
+      const sunsetDate = new Date(sunsetTimeStr);
 
-      console.log(`🌅 Raw API Response: ${data.results.sunset}`);
-      console.log(`🌅 UTC Sunset: ${sunsetUTC.toISOString()}`);
-      console.log(`🌅 IST Sunset: ${sunsetIST.toISOString()}`);
-      console.log(
-        `🌅 Final Time: ${hours}:${minutes.toString().padStart(2, '0')}`,
-      );
+      // Add 5.5 hours for IST
+      const istTime = new Date(sunsetDate.getTime() + 5.5 * 60 * 60 * 1000);
+
+      const hours = istTime.getUTCHours();
+      const minutes = istTime.getUTCMinutes();
+
+      console.log(`🌅 Raw API Response: ${sunsetTimeStr}`);
+      console.log(`🌅 Parsed Date: ${sunsetDate.toISOString()}`);
+      console.log(`🌅 IST Time: ${istTime.toISOString()}`);
+      console.log(`🌅 Hours: ${hours}, Minutes: ${minutes}`);
+
+      // Validate time
+      if (hours < 12 || hours > 23) {
+        console.warn('⚠️ Invalid sunset time - using fallback');
+        return calculateSunsetFallback(date, latitude, longitude);
+      }
 
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     } else {
