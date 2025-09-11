@@ -45,6 +45,9 @@ const WebSocketServer = require('./websocket');
 // Initialize express app
 const app = express();
 
+// Trust proxy for rate limiting (required for Render)
+app.set('trust proxy', 1);
+
 // Validate environment variables
 validateEnvironment();
 
