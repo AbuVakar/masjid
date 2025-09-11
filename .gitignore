@@ -117,7 +117,7 @@ __tests__/
 !README.md
 
 # Deployment files
-netlify.toml
+# netlify.toml
 vercel.json
 
 # Backup files
