@@ -920,7 +920,7 @@ const Modal = ({
                     type='time'
                     step='60'
                     name='Maghrib'
-                    value={times.Maghrib}
+                    value={dynamicMaghrib}
                     onChange={onChange}
                     disabled
                   />
