@@ -102,23 +102,79 @@ const fetchSunsetTime = async (
 ) => {
   try {
     const dateStr = date.toISOString().split('T')[0];
+
+    // Use a more reliable API - OpenWeatherMap or fallback to calculation
     const url = `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateStr}&formatted=0`;
 
-    const response = await fetch(url);
+    console.log(`🌅 TimetableModal - Fetching sunset from: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      // Add timeout
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
 
-    if (data.status === 'OK' && data.results.sunset) {
-      const sunsetUTC = new Date(data.results.sunset);
-      const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000);
-      const hours = sunsetIST.getHours();
-      const minutes = sunsetIST.getMinutes();
+    console.log(`🌅 TimetableModal - API Response:`, data);
 
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    if (data.status === 'OK' && data.results.sunset) {
+      // Parse the sunset time string directly
+      const sunsetTimeStr = data.results.sunset; // Format: "2024-01-01T12:30:00+00:00"
+
+      console.log(`🌅 TimetableModal - Raw API Response: ${sunsetTimeStr}`);
+
+      // Extract time directly from string (more reliable)
+      const timeMatch = sunsetTimeStr.match(/T(\d{2}):(\d{2}):(\d{2})/);
+
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1]);
+        let minutes = parseInt(timeMatch[2]);
+
+        // Add 5.5 hours for IST
+        hours += 5;
+        minutes += 30;
+
+        // Handle minute overflow
+        if (minutes >= 60) {
+          hours += 1;
+          minutes -= 60;
+        }
+
+        // Handle hour overflow
+        if (hours >= 24) {
+          hours -= 24;
+        }
+
+        console.log(
+          `🌅 TimetableModal - Extracted Hours: ${timeMatch[1]}, Minutes: ${timeMatch[2]}`,
+        );
+        console.log(`🌅 TimetableModal - IST Hours: ${hours}, Minutes: ${minutes}`);
+        console.log(
+          `🌅 TimetableModal - Final Time: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`,
+        );
+
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      } else {
+        console.warn('⚠️ TimetableModal - Could not parse sunset time - using fallback');
+        return calculateSunsetFallback(date, latitude, longitude);
+      }
     } else {
       throw new Error('Failed to fetch sunset data');
     }
   } catch (error) {
-    console.error('Error fetching sunset time:', error);
+    console.warn(
+      'TimetableModal - Sunset API failed, using fallback calculation:',
+      error.message,
+    );
+    // Fallback to approximate calculation if API fails
     return calculateSunsetFallback(date, latitude, longitude);
   }
 };
