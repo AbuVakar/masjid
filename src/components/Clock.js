@@ -86,7 +86,8 @@ const calculateSunsetFallback = (
   // Latitude adjustment (India is around 28°N)
   const latitudeAdjustment = (latitude - 28) * 2; // Minutes per degree
 
-  let totalMinutes = baseHour * 60 + baseMinute + seasonalAdjustment + latitudeAdjustment;
+  let totalMinutes =
+    baseHour * 60 + baseMinute + seasonalAdjustment + latitudeAdjustment;
   let finalHour = Math.floor(totalMinutes / 60);
   let finalMinute = Math.floor(totalMinutes % 60);
 
