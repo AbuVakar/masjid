@@ -17,6 +17,9 @@ import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import ResourcesPage from './pages/ResourcesPage';
 
+// Components
+import ResetPassword from './components/ResetPassword';
+
 // Hooks
 import { useUser } from './context/UserContext';
 import { useNotify } from './context/NotificationContext';
@@ -398,6 +401,24 @@ function App() {
           onLogin={handleUserLogin}
           onRegister={handleUserRegister}
           onGuestMode={handleGuestMode}
+        />
+      </div>
+    );
+  }
+
+  // Handle password reset route
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken =
+    urlParams.get('token') ||
+    window.location.pathname.split('/reset-password/')[1];
+
+  if (resetToken) {
+    return (
+      <div className='app'>
+        <ResetPassword
+          token={resetToken}
+          onBack={() => (window.location.href = '/')}
+          onSuccess={() => (window.location.href = '/')}
         />
       </div>
     );
