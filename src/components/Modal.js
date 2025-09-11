@@ -51,22 +51,42 @@ const fetchSunsetTime = async (
     console.log(`🌅 Modal - API Response:`, data);
 
     if (data.status === 'OK' && data.results.sunset) {
-      // Convert UTC time to IST (UTC+5:30)
-      const sunsetUTC = new Date(data.results.sunset);
-      const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000); // Add 5.5 hours
+      // Extract time using string parsing (same as Clock.js)
+      const sunsetTimeStr = data.results.sunset;
+      const timeMatch = sunsetTimeStr.match(/T(\d{2}):(\d{2}):(\d{2})/);
 
-      // Use local methods since we've converted to IST
-      const hours = sunsetIST.getHours();
-      const minutes = sunsetIST.getMinutes();
+      if (!timeMatch) {
+        throw new Error('Invalid sunset time format');
+      }
 
-      console.log(`🌅 Modal - Raw API Response: ${data.results.sunset}`);
-      console.log(`🌅 Modal - UTC Sunset: ${sunsetUTC.toISOString()}`);
-      console.log(`🌅 Modal - IST Sunset: ${sunsetIST.toISOString()}`);
+      const utcHours = parseInt(timeMatch[1], 10);
+      const utcMinutes = parseInt(timeMatch[2], 10);
+
+      // Convert UTC to IST (add 5 hours 30 minutes)
+      let istHours = utcHours + 5;
+      let istMinutes = utcMinutes + 30;
+
+      // Handle minute overflow
+      if (istMinutes >= 60) {
+        istHours += 1;
+        istMinutes -= 60;
+      }
+
+      // Handle hour overflow
+      if (istHours >= 24) {
+        istHours -= 24;
+      }
+
+      console.log(`🌅 Modal - Raw API Response: ${sunsetTimeStr}`);
       console.log(
-        `🌅 Modal - Final Time: ${hours}:${minutes.toString().padStart(2, '0')}`,
+        `🌅 Modal - Extracted UTC Hours: ${utcHours}, Minutes: ${utcMinutes}`,
+      );
+      console.log(`🌅 Modal - IST Hours: ${istHours}, Minutes: ${istMinutes}`);
+      console.log(
+        `🌅 Modal - Final Time: ${istHours}:${istMinutes.toString().padStart(2, '0')}`,
       );
 
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      return `${istHours.toString().padStart(2, '0')}:${istMinutes.toString().padStart(2, '0')}`;
     } else {
       throw new Error('Failed to fetch sunset data');
     }
