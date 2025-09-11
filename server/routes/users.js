@@ -214,14 +214,16 @@ router.put(
     );
 
     // Temporarily handle when authentication is disabled
-    let userId = req.user?._id;
-    if (!userId) {
-      // For testing, use a hardcoded admin user ID
-      userId = '68a309fa80383f3392d7590d'; // Admin user ID
-      console.log('Backend - Using hardcoded user ID for testing:', userId);
+    let user;
+    if (req.user?._id) {
+      // Use authenticated user if available
+      user = await User.findById(req.user._id);
+    } else {
+      // For testing, find admin user by username
+      user = await User.findOne({ username: 'admin' });
+      console.log('Backend - Using admin user for testing:', user?._id);
     }
 
-    const user = await User.findById(userId);
     if (!user) {
       throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
