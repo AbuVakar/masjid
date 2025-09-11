@@ -402,6 +402,7 @@ app.use(
       'http://10.209.233.76:3000',
       // Netlify URLs for production
       'https://tiny-torrone-c5fa9b.netlify.app',
+      'https://madina-masjid.netlify.app',
       'https://*.netlify.app',
       process.env.CORS_ORIGIN,
     ].filter(Boolean),
