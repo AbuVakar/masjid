@@ -44,8 +44,9 @@ const fetchSunsetTime = async (
       // Add 5.5 hours for IST
       const istTime = new Date(sunsetDate.getTime() + 5.5 * 60 * 60 * 1000);
 
-      const hours = istTime.getUTCHours();
-      const minutes = istTime.getUTCMinutes();
+      // Use local methods for IST time
+      const hours = istTime.getHours();
+      const minutes = istTime.getMinutes();
 
       console.log(`🌅 Raw API Response: ${sunsetTimeStr}`);
       console.log(`🌅 Parsed Date: ${sunsetDate.toISOString()}`);
