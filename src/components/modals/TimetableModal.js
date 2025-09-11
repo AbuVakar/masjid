@@ -351,9 +351,9 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
           width: '100%',
           background: '#ffffff',
           borderTop: '3px solid #007bff',
-          padding: '15px 20px',
+          padding: window.innerWidth <= 768 ? '6px 8px' : '15px 20px',
           display: 'flex',
-          gap: '12px',
+          gap: window.innerWidth <= 768 ? '2px' : '12px',
           justifyContent: 'center',
           alignItems: 'center',
           boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.1)',
@@ -366,18 +366,18 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
             onClick={onClose}
             style={{
               flex: 1,
-              maxWidth: '140px',
-              minHeight: '50px',
-              padding: '15px 20px',
-              fontSize: '16px',
+              maxWidth: window.innerWidth <= 768 ? 'none' : '140px',
+              minHeight: window.innerWidth <= 768 ? '32px' : '50px',
+              padding: window.innerWidth <= 768 ? '4px 6px' : '15px 20px',
+              fontSize: window.innerWidth <= 768 ? '0.7rem' : '16px',
               fontWeight: '700',
-              borderRadius: '10px',
+              borderRadius: window.innerWidth <= 768 ? '4px' : '10px',
               border: '2px solid #ddd',
               background: '#ffffff',
               color: '#333333',
               cursor: 'pointer',
               textTransform: 'uppercase',
-              letterSpacing: '1px'
+              letterSpacing: window.innerWidth <= 768 ? '0.2px' : '1px'
             }}
           >
             Cancel
@@ -390,18 +390,18 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
             }
             style={{
               flex: 1,
-              maxWidth: '140px',
-              minHeight: '50px',
-              padding: '15px 20px',
-              fontSize: '16px',
+              maxWidth: window.innerWidth <= 768 ? 'none' : '140px',
+              minHeight: window.innerWidth <= 768 ? '32px' : '50px',
+              padding: window.innerWidth <= 768 ? '4px 6px' : '15px 20px',
+              fontSize: window.innerWidth <= 768 ? '0.7rem' : '16px',
               fontWeight: '700',
-              borderRadius: '10px',
+              borderRadius: window.innerWidth <= 768 ? '4px' : '10px',
               border: '2px solid #007bff',
               background: '#007bff',
               color: 'white',
               cursor: 'pointer',
               textTransform: 'uppercase',
-              letterSpacing: '1px'
+              letterSpacing: window.innerWidth <= 768 ? '0.2px' : '1px'
             }}
           >
             {loading ? 'Saving...' : 'Save Times'}

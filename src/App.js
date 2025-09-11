@@ -338,7 +338,15 @@ function App() {
         notify(message, { type: 'error' });
       }
     },
-    [closeModal, notify, saveHouse, saveMember, updateUser],
+    [
+      closeModal,
+      notify,
+      saveHouse,
+      saveMember,
+      updateUser,
+      isAdmin,
+      isAuthenticated,
+    ],
   );
 
   const handleNavigation = useCallback(

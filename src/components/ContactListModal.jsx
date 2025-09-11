@@ -116,9 +116,14 @@ const ContactListModal = ({ isOpen, onClose }) => {
     if (isOpen) {
       const loadContacts = async () => {
         try {
-          const response = await apiService.get('/info-data?type=contact');
-          if (response && response.items && response.items.length > 0) {
-            setContacts(response.items);
+          const response = await apiService.get('/info-data/contact');
+          if (
+            response &&
+            response.data &&
+            response.data.items &&
+            response.data.items.length > 0
+          ) {
+            setContacts(response.data.items);
           }
         } catch (error) {
           console.error('Error loading contacts:', error);

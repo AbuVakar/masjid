@@ -399,6 +399,7 @@ app.use(
       'http://10.146.95.253:3000',
       'http://10.146.95.254:3000',
       'http://10.146.95.255:3000',
+      'http://10.209.233.76:3000',
       process.env.CORS_ORIGIN,
     ].filter(Boolean),
     credentials: true,
@@ -558,7 +559,7 @@ const PORT = process.env.PORT || 5000;
 
 let server;
 if (process.env.NODE_ENV !== 'test') {
-  server = app.listen(PORT, async () => {
+  server = app.listen(PORT, '0.0.0.0', async () => {
     await connectDB();
 
     // Initialize WebSocket server for admin notifications
@@ -568,6 +569,7 @@ if (process.env.NODE_ENV !== 'test') {
       port: PORT,
       environment: process.env.NODE_ENV || 'development',
       apiUrl: `http://localhost:${PORT}`,
+      mobileUrl: `http://10.31.43.76:${PORT}`,
       corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
       websocket: 'ws://localhost:' + PORT + '/ws/admin-notifications',
     });

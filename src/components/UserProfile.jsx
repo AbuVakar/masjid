@@ -316,101 +316,216 @@ const UserProfile = ({ user, onUpdatePreferences, onLogout }) => {
                 <div className='timing-grid'>
                   <div className='timing-card'>
                     <label className='timing-label'>🌅 Fajr</label>
-                    <div className='timing-input-group'>
-                      <input
-                        type='number'
-                        min='1'
-                        max='60'
-                        value={preferences.prayerTiming?.Fajr || 5}
-                        onChange={(e) =>
-                          handlePreferenceChange(
-                            'prayerTiming',
-                            'Fajr',
-                            parseInt(e.target.value) || 5,
-                          )
-                        }
-                        className='timing-input'
-                      />
+                    <div className='timing-picker-group'>
+                      <div className='timing-picker'>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-up'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Fajr',
+                              Math.min(
+                                (preferences.prayerTiming?.Fajr || 5) + 1,
+                                60,
+                              ),
+                            )
+                          }
+                        >
+                          ▶
+                        </button>
+                        <div className='timing-display'>
+                          {preferences.prayerTiming?.Fajr || 5}
+                        </div>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-down'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Fajr',
+                              Math.max(
+                                (preferences.prayerTiming?.Fajr || 5) - 1,
+                                1,
+                              ),
+                            )
+                          }
+                        >
+                          ◀
+                        </button>
+                      </div>
                       <span className='timing-unit'>min</span>
                     </div>
                   </div>
                   <div className='timing-card'>
                     <label className='timing-label'>☀️ Dhuhr/Juma</label>
-                    <div className='timing-input-group'>
-                      <input
-                        type='number'
-                        min='1'
-                        max='60'
-                        value={preferences.prayerTiming?.Dhuhr || 5}
-                        onChange={(e) =>
-                          handlePreferenceChange(
-                            'prayerTiming',
-                            'Dhuhr',
-                            parseInt(e.target.value) || 5,
-                          )
-                        }
-                        className='timing-input'
-                      />
+                    <div className='timing-picker-group'>
+                      <div className='timing-picker'>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-up'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Dhuhr',
+                              Math.min(
+                                (preferences.prayerTiming?.Dhuhr || 5) + 1,
+                                60,
+                              ),
+                            )
+                          }
+                        >
+                          ▶
+                        </button>
+                        <div className='timing-display'>
+                          {preferences.prayerTiming?.Dhuhr || 5}
+                        </div>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-down'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Dhuhr',
+                              Math.max(
+                                (preferences.prayerTiming?.Dhuhr || 5) - 1,
+                                1,
+                              ),
+                            )
+                          }
+                        >
+                          ◀
+                        </button>
+                      </div>
                       <span className='timing-unit'>min</span>
                     </div>
                   </div>
                   <div className='timing-card'>
                     <label className='timing-label'>🌤️ Asr</label>
-                    <div className='timing-input-group'>
-                      <input
-                        type='number'
-                        min='1'
-                        max='60'
-                        value={preferences.prayerTiming?.Asr || 5}
-                        onChange={(e) =>
-                          handlePreferenceChange(
-                            'prayerTiming',
-                            'Asr',
-                            parseInt(e.target.value) || 5,
-                          )
-                        }
-                        className='timing-input'
-                      />
+                    <div className='timing-picker-group'>
+                      <div className='timing-picker'>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-up'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Asr',
+                              Math.min(
+                                (preferences.prayerTiming?.Asr || 5) + 1,
+                                60,
+                              ),
+                            )
+                          }
+                        >
+                          ▶
+                        </button>
+                        <div className='timing-display'>
+                          {preferences.prayerTiming?.Asr || 5}
+                        </div>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-down'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Asr',
+                              Math.max(
+                                (preferences.prayerTiming?.Asr || 5) - 1,
+                                1,
+                              ),
+                            )
+                          }
+                        >
+                          ◀
+                        </button>
+                      </div>
                       <span className='timing-unit'>min</span>
                     </div>
                   </div>
                   <div className='timing-card'>
                     <label className='timing-label'>🌆 Maghrib</label>
-                    <div className='timing-input-group'>
-                      <input
-                        type='number'
-                        min='1'
-                        max='60'
-                        value={preferences.prayerTiming?.Maghrib || 5}
-                        onChange={(e) =>
-                          handlePreferenceChange(
-                            'prayerTiming',
-                            'Maghrib',
-                            parseInt(e.target.value) || 5,
-                          )
-                        }
-                        className='timing-input'
-                      />
+                    <div className='timing-picker-group'>
+                      <div className='timing-picker'>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-up'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Maghrib',
+                              Math.min(
+                                (preferences.prayerTiming?.Maghrib || 5) + 1,
+                                60,
+                              ),
+                            )
+                          }
+                        >
+                          ▶
+                        </button>
+                        <div className='timing-display'>
+                          {preferences.prayerTiming?.Maghrib || 5}
+                        </div>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-down'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Maghrib',
+                              Math.max(
+                                (preferences.prayerTiming?.Maghrib || 5) - 1,
+                                1,
+                              ),
+                            )
+                          }
+                        >
+                          ◀
+                        </button>
+                      </div>
                       <span className='timing-unit'>min</span>
                     </div>
                   </div>
                   <div className='timing-card'>
                     <label className='timing-label'>🌙 Isha</label>
-                    <div className='timing-input-group'>
-                      <input
-                        type='number'
-                        min='1'
-                        max='60'
-                        value={preferences.prayerTiming?.Isha || 5}
-                        onChange={(e) =>
-                          handlePreferenceChange(
-                            'prayerTiming',
-                            'Isha',
-                            parseInt(e.target.value) || 5,
-                          )
-                        }
-                        className='timing-input'
-                      />
+                    <div className='timing-picker-group'>
+                      <div className='timing-picker'>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-up'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Isha',
+                              Math.min(
+                                (preferences.prayerTiming?.Isha || 5) + 1,
+                                60,
+                              ),
+                            )
+                          }
+                        >
+                          ▶
+                        </button>
+                        <div className='timing-display'>
+                          {preferences.prayerTiming?.Isha || 5}
+                        </div>
+                        <button
+                          type='button'
+                          className='timing-btn timing-btn-down'
+                          onClick={() =>
+                            handlePreferenceChange(
+                              'prayerTiming',
+                              'Isha',
+                              Math.max(
+                                (preferences.prayerTiming?.Isha || 5) - 1,
+                                1,
+                              ),
+                            )
+                          }
+                        >
+                          ◀
+                        </button>
+                      </div>
                       <span className='timing-unit'>min</span>
                     </div>
                   </div>
@@ -733,7 +848,7 @@ const UserProfile = ({ user, onUpdatePreferences, onLogout }) => {
         }
 
         .timing-card { background: #0b1324; border: 1px solid #1f2937; border-radius: 10px; padding: 12px; }
-        .timing-label { display: block; margin-bottom: 6px; font-size: 13px; opacity: 0.9; }
+        .timing-label { display: block; margin-bottom: 6px; font-size: 14px; opacity: 1; color: #ffffff; font-weight: 900; text-shadow: 0 0 6px rgba(255, 255, 255, 1); visibility: visible; -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.8); }
         .timing-input-group { display: flex; align-items: center; gap: 8px; }
         .timing-input {
           width: 72px;
