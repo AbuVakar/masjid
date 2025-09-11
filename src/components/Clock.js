@@ -39,9 +39,9 @@ const fetchSunsetTime = async (
       const sunsetUTC = new Date(data.results.sunset);
       const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000); // Add 5.5 hours
 
-      // Use UTC methods since the Date object is still in UTC timezone
-      const hours = sunsetIST.getUTCHours();
-      const minutes = sunsetIST.getUTCMinutes();
+      // Use local methods since we've converted to IST
+      const hours = sunsetIST.getHours();
+      const minutes = sunsetIST.getMinutes();
 
       console.log(`🌅 Raw API Response: ${data.results.sunset}`);
       console.log(`🌅 UTC Sunset: ${sunsetUTC.toISOString()}`);
@@ -64,7 +64,7 @@ const fetchSunsetTime = async (
   }
 };
 
-// Fallback calculation function (simplified version)
+// Improved fallback calculation function
 const calculateSunsetFallback = (
   date,
   latitude = 28.7774,
@@ -74,21 +74,29 @@ const calculateSunsetFallback = (
     (date - new Date(date.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24),
   );
 
-  // Base sunset time for the latitude
+  // More accurate base sunset time for Indian latitude
   let baseHour = 18;
-  let baseMinute = 30;
+  let baseMinute = 15; // Earlier base time for India
 
-  // Seasonal adjustment
-  const daysFromSolstice = Math.abs(dayOfYear - 172);
+  // Seasonal adjustment based on day of year
+  const daysFromSolstice = Math.abs(dayOfYear - 172); // June 21st is day 172
   const seasonalAdjustment =
-    Math.cos((daysFromSolstice / 365) * 2 * Math.PI) * 60;
+    Math.cos((daysFromSolstice / 365) * 2 * Math.PI) * 45; // Reduced adjustment
 
-  let totalMinutes = baseHour * 60 + baseMinute + seasonalAdjustment;
+  // Latitude adjustment (India is around 28°N)
+  const latitudeAdjustment = (latitude - 28) * 2; // Minutes per degree
+
+  let totalMinutes = baseHour * 60 + baseMinute + seasonalAdjustment + latitudeAdjustment;
   let finalHour = Math.floor(totalMinutes / 60);
   let finalMinute = Math.floor(totalMinutes % 60);
 
+  // Ensure valid time range
   if (finalHour >= 24) finalHour = finalHour % 24;
   if (finalHour < 0) finalHour = 24 + finalHour;
+  if (finalMinute >= 60) {
+    finalMinute = finalMinute % 60;
+    finalHour = (finalHour + 1) % 24;
+  }
 
   return `${finalHour.toString().padStart(2, '0')}:${finalMinute.toString().padStart(2, '0')}`;
 };

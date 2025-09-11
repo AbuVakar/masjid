@@ -55,9 +55,9 @@ const fetchSunsetTime = async (
       const sunsetUTC = new Date(data.results.sunset);
       const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000); // Add 5.5 hours
 
-      // Use UTC methods since the Date object is still in UTC timezone
-      const hours = sunsetIST.getUTCHours();
-      const minutes = sunsetIST.getUTCMinutes();
+      // Use local methods since we've converted to IST
+      const hours = sunsetIST.getHours();
+      const minutes = sunsetIST.getMinutes();
 
       console.log(`🌅 Modal - Raw API Response: ${data.results.sunset}`);
       console.log(`🌅 Modal - UTC Sunset: ${sunsetUTC.toISOString()}`);

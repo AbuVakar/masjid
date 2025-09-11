@@ -110,8 +110,8 @@ const fetchSunsetTime = async (
     if (data.status === 'OK' && data.results.sunset) {
       const sunsetUTC = new Date(data.results.sunset);
       const sunsetIST = new Date(sunsetUTC.getTime() + 5.5 * 60 * 60 * 1000);
-      const hours = sunsetIST.getUTCHours();
-      const minutes = sunsetIST.getUTCMinutes();
+      const hours = sunsetIST.getHours();
+      const minutes = sunsetIST.getMinutes();
 
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     } else {
