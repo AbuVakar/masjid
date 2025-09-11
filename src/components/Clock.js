@@ -38,28 +38,43 @@ const fetchSunsetTime = async (
       // Parse the sunset time string directly
       const sunsetTimeStr = data.results.sunset; // Format: "2024-01-01T12:30:00+00:00"
 
-      // Extract time part and convert to IST
-      const sunsetDate = new Date(sunsetTimeStr);
-
-      // Add 5.5 hours for IST
-      const istTime = new Date(sunsetDate.getTime() + 5.5 * 60 * 60 * 1000);
-
-      // Use local methods for IST time
-      const hours = istTime.getHours();
-      const minutes = istTime.getMinutes();
-
       console.log(`🌅 Raw API Response: ${sunsetTimeStr}`);
-      console.log(`🌅 Parsed Date: ${sunsetDate.toISOString()}`);
-      console.log(`🌅 IST Time: ${istTime.toISOString()}`);
-      console.log(`🌅 Hours: ${hours}, Minutes: ${minutes}`);
 
-      // Validate time
-      if (hours < 12 || hours > 23) {
-        console.warn('⚠️ Invalid sunset time - using fallback');
+      // Extract time directly from string (more reliable)
+      const timeMatch = sunsetTimeStr.match(/T(\d{2}):(\d{2}):(\d{2})/);
+
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1]);
+        let minutes = parseInt(timeMatch[2]);
+
+        // Add 5.5 hours for IST
+        hours += 5;
+        minutes += 30;
+
+        // Handle minute overflow
+        if (minutes >= 60) {
+          hours += 1;
+          minutes -= 60;
+        }
+
+        // Handle hour overflow
+        if (hours >= 24) {
+          hours -= 24;
+        }
+
+        console.log(
+          `🌅 Extracted Hours: ${timeMatch[1]}, Minutes: ${timeMatch[2]}`,
+        );
+        console.log(`🌅 IST Hours: ${hours}, Minutes: ${minutes}`);
+        console.log(
+          `🌅 Final Time: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`,
+        );
+
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      } else {
+        console.warn('⚠️ Could not parse sunset time - using fallback');
         return calculateSunsetFallback(date, latitude, longitude);
       }
-
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     } else {
       throw new Error('Failed to fetch sunset data');
     }

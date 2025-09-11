@@ -2165,7 +2165,15 @@ const Modal = ({
     };
     return (
       <div className='modal-backdrop export-modal-backdrop'>
-        <div className='modal export-modal'>
+        <div
+          className='modal export-modal'
+          style={{
+            maxHeight: '80vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <h3 style={{ marginBottom: 6 }}>
             {type === 'export_pdf' ? 'Export PDF Columns' : 'Export Columns'}
           </h3>
@@ -2175,6 +2183,10 @@ const Modal = ({
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: 8,
+              overflowY: 'auto',
+              flex: 1,
+              padding: '0 4px',
+              maxHeight: '60vh',
             }}
           >
             {allCols.map((col) => (

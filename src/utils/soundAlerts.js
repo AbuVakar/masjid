@@ -178,6 +178,12 @@ class SoundAlerts {
    * Play sound based on notification priority
    */
   playSound(priority) {
+    // Skip sound for connection errors to prevent spam
+    if (priority === 'error' && this.isConnectionError()) {
+      console.log('Sound alerts: Skipping sound for connection error');
+      return;
+    }
+
     const sound = this.sounds[priority.toLowerCase()];
     if (sound && typeof sound === 'function') {
       sound();
@@ -192,6 +198,24 @@ class SoundAlerts {
         );
       }
     }
+  }
+
+  /**
+   * Check if this is a connection error to avoid sound spam
+   */
+  isConnectionError() {
+    // Check if we've played connection error sounds recently
+    const now = Date.now();
+    const lastConnectionError = this.lastConnectionError || 0;
+    const timeSinceLastError = now - lastConnectionError;
+
+    // Only play connection error sound once every 30 seconds
+    if (timeSinceLastError < 30000) {
+      return true;
+    }
+
+    this.lastConnectionError = now;
+    return false;
   }
 
   /**
