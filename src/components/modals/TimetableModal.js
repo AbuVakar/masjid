@@ -294,12 +294,15 @@ const TimetableModal = ({ data, onClose, onSave, L, loading = false }) => {
     checkDailyUpdate();
   }, []);
 
-  // Update times when data changes
+  // Update times when data changes, but keep Maghrib dynamic
   useEffect(() => {
     if (data?.times) {
-      setTimes(data.times);
+      setTimes({
+        ...data.times,
+        Maghrib: dynamicMaghrib, // Always use dynamic Maghrib
+      });
     }
-  }, [data?.times]);
+  }, [data?.times, dynamicMaghrib]);
 
   // Dynamic Viewport Height Fix for Mobile
   useEffect(() => {

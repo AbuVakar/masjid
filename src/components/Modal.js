@@ -243,6 +243,7 @@ const Modal = ({
             const sunset = await fetchSunsetTime(today, 28.7774, 78.0603);
             setDynamicMaghrib(sunset);
             console.log(`🌅 Modal - Daily update: Maghrib set to ${sunset}`);
+            console.log(`🌅 Modal - Current dynamicMaghrib state:`, sunset);
           } catch (error) {
             console.error('Failed to fetch daily Maghrib time:', error);
             const today = new Date(
@@ -970,7 +971,7 @@ const Modal = ({
                   </li>
                   <li className='prayer-item'>
                     <div className='prayer-name'>Maghrib</div>
-                    <div className='prayer-time'>{times.Maghrib}</div>
+                    <div className='prayer-time'>{dynamicMaghrib}</div>
                     <div className='prayer-quote highlight'>
                       Maghrib duaon ki qabooliyat ka waqt hai.
                     </div>
