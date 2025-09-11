@@ -459,7 +459,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // CSRF protection middleware
 // We will not apply CSRF to GET, HEAD, OPTIONS, TRACE requests.
 // And we will skip it in test environment and development for easier testing
-if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'development') {
+// Temporarily disabled for production deployment
+if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'development' && process.env.DISABLE_CSRF === 'true') {
   app.use(csrfToken);
   app.use(validateCSRF);
 }
